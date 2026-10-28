@@ -135,12 +135,17 @@ private func monotonicNs() -> UInt64 {
     DispatchTime.now().uptimeNanoseconds
 }
 
+private let emitLock = NSLock()
+
+// Level events come from a timer thread, so each line goes out in one locked write.
 private func emit(_ event: String, _ fields: [String: Any] = [:]) {
     var payload = fields
     payload["event"] = event
-    guard let data = try? JSONSerialization.data(withJSONObject: payload, options: [.sortedKeys]) else { return }
+    guard var data = try? JSONSerialization.data(withJSONObject: payload, options: [.sortedKeys]) else { return }
+    data.append(0x0A)
+    emitLock.lock()
     FileHandle.standardOutput.write(data)
-    FileHandle.standardOutput.write(Data([0x0A]))
+    emitLock.unlock()
 }
 
 private extension Data {
@@ -201,6 +206,9 @@ private final class ColdRecorder: @unchecked Sendable {
     private var deviceWasRunningBeforeCapture = false
     private var recorded: [Int16] = []
     private var outputPath = "/tmp/whisper-dictate.wav"
+    private var levelSquares: Double = 0
+    private var levelSamples = 0
+    private var levelTimer: DispatchSourceTimer?
 
     init(configuration: Configuration) throws {
         device = try selectInputDevice(requestedName: configuration.deviceName)
@@ -366,7 +374,14 @@ private final class ColdRecorder: @unchecked Sendable {
             count: Int(frames)
         )
         lock.lock()
-        if recording { recorded.append(contentsOf: samples) }
+        if recording {
+            recorded.append(contentsOf: samples)
+            for sample in samples {
+                let value = Double(sample)
+                levelSquares += value * value
+            }
+            levelSamples += samples.count
+        }
         let waiter = firstBufferWaiter
         firstBufferWaiter = nil
         lock.unlock()
@@ -409,10 +424,42 @@ private final class ColdRecorder: @unchecked Sendable {
             "microphone_active": deviceIsRunning(device),
             "sample_rate": sampleRate,
         ])
+        startLevelTimer()
+    }
+
+    // Report the RMS level of the audio since the last tick, about 30 times a
+    // second, so Hammerspoon can draw voice bars.
+    private func startLevelTimer() {
+        let timer = DispatchSource.makeTimerSource(queue: DispatchQueue.global(qos: .userInteractive))
+        timer.schedule(deadline: .now() + .milliseconds(33), repeating: .milliseconds(33))
+        timer.setEventHandler { [weak self] in
+            guard let self else { return }
+            self.lock.lock()
+            let squares = self.levelSquares
+            let count = self.levelSamples
+            self.levelSquares = 0
+            self.levelSamples = 0
+            self.lock.unlock()
+            guard count > 0 else { return }
+            let rms = (squares / Double(count)).squareRoot() / 32768
+            emit("level", ["rms": (rms * 10_000).rounded() / 10_000])
+        }
+        levelTimer = timer
+        timer.resume()
+    }
+
+    private func stopLevelTimer() {
+        levelTimer?.cancel()
+        levelTimer = nil
+        lock.lock()
+        levelSquares = 0
+        levelSamples = 0
+        lock.unlock()
     }
 
     func stop() throws {
         let received = monotonicNs()
+        stopLevelTimer()
         lock.lock()
         recording = false
         lock.unlock()
@@ -454,6 +501,7 @@ private final class ColdRecorder: @unchecked Sendable {
     }
 
     func shutdown() {
+        stopLevelTimer()
         AudioOutputUnitStop(audioUnit)
         AudioUnitUninitialize(audioUnit)
         AudioComponentInstanceDispose(audioUnit)

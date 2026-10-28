@@ -84,11 +84,13 @@ xcrun swiftc -O \
   -framework AudioUnit \
   -framework CoreAudio \
   "$RECORDER_SRC" -o "$RECORDER" </dev/null
+fetch "sounds/generate.py" "$HS_DIR/whisper-sounds-generate.py"
+/usr/bin/python3 "$HS_DIR/whisper-sounds-generate.py" "$HS_DIR/whisper-sounds" </dev/null
 touch "$HS_DIR/init.lua"
 if ! grep -q 'require("whisper-dictation")' "$HS_DIR/init.lua"; then
   printf '\nrequire("whisper-dictation")\n' >> "$HS_DIR/init.lua"
 fi
-echo "  installed + native recorder built → $HS_DIR"
+echo "  installed + native recorder and sound library built → $HS_DIR"
 
 install_server_agent() {
 say "Whisper server LaunchAgent (launchd keeps it alive)"

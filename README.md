@@ -41,6 +41,21 @@ F5** → talk → **press F5 again**. Text appears shortly after you stop.
 > needs step 1 (Hammerspoon permissions). Karabiner exists solely to make the *bare* dictation
 > key work, since macOS sends it as a special event Hammerspoon can't catch on its own.
 
+### Notch Island and sounds
+
+While you talk, the MacBook notch grows into a black pill: a red dot and a timer on the left,
+voice bars that follow your voice on the right, and a spinner while Whisper transcribes. On a
+screen with no notch, the same pill drops from the top center. It shows on the screen of the
+window you are typing in.
+
+A short sound plays at each step: start, stop, text pasted, and error (nothing heard). The
+menu-bar 🎙 menu has:
+
+- **Notch Island**: turn the animation on or off.
+- **Sound**: pick one of 26 sound packs (23 made by `sounds/generate.py`, 3 built from macOS
+  system sounds), turn sounds off, or set the volume. Picking a pack plays it.
+- **Preview animation and sounds**: a fake 3-second dictation. Nothing is recorded or pasted.
+
 ## Troubleshooting
 
 - **F5 asks whether you want to enable Apple's Dictation:** the Karabiner rule is installed but
@@ -113,6 +128,7 @@ rm ~/Library/LaunchAgents/com.whisper-dictation.server.plist
 rm ~/.hammerspoon/whisper-dictation.lua
 rm ~/.hammerspoon/WhisperRecorder.swift
 rm ~/.hammerspoon/bin/whisper-recorder
+rm -r ~/.hammerspoon/whisper-sounds ~/.hammerspoon/whisper-sounds-generate.py
 rm ~/.config/karabiner/assets/complex_modifications/whisper-dictation.json
 # remove the require("whisper-dictation") line from ~/.hammerspoon/init.lua
 # disable the rule in Karabiner, and `brew uninstall --cask hammerspoon karabiner-elements` if unused
