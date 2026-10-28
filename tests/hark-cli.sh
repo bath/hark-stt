@@ -61,6 +61,30 @@ installer --json --no-karabiner"
   exit 1
 }
 
+# A curl install downloads the installer. A page that is not the installer,
+# such as a domain parking page, is skipped for the next source.
+# Never run "$ROOT/bin/hark" update or setup here: in a checkout, install.sh is
+# next to bin/, so it would run the real installer against the live session.
+mkdir -p "$TMP/web" "$TMP/nobrew" "$TMP/curl/bin"
+cp "$ROOT/bin/hark" "$TMP/curl/bin/hark"
+for command in launchctl killall open lsof; do printf '#!/bin/bash\nexit 0\n' >"$TMP/nobrew/$command"; done
+echo '<!doctype html><title>Coming Soon</title>' >"$TMP/web/parking.html"
+printf '#!/usr/bin/env bash\n# Hark installer. (test)\necho "downloaded installer $*" >>"$HARK_LOG"\n' >"$TMP/web/install.sh"
+printf '#!/bin/bash\nexit 1\n' >"$TMP/nobrew/brew"
+chmod +x "$TMP/nobrew/"*
+: >"$HARK_LOG"
+HOME="$TMP/home" PATH="$TMP/nobrew:$PATH" HARK_INSTALLER_URLS="file://$TMP/web/parking.html file://$TMP/web/install.sh" \
+  "$TMP/curl/bin/hark" update --json 2>/dev/null
+[ "$(cat "$HARK_LOG")" = "downloaded installer --json --no-karabiner" ] || {
+  printf 'FAIL: a curl update ran:\n%s\n' "$(cat "$HARK_LOG")" >&2
+  exit 1
+}
+if HOME="$TMP/home" PATH="$TMP/nobrew:$PATH" HARK_INSTALLER_URLS="file://$TMP/web/parking.html" \
+  "$TMP/curl/bin/hark" update 2>/dev/null; then
+  echo "FAIL: update must fail when no source serves the installer" >&2
+  exit 1
+fi
+
 # hark.works serves docs/, so these copies must match the repo files.
 for file in llms.txt install.sh AGENTS.md; do
   cmp -s "$ROOT/$file" "$ROOT/docs/$file" || { echo "FAIL: docs/$file (served at hark.works/$file) must match $file; run cp $file docs/" >&2; exit 1; }

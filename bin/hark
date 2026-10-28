@@ -20,14 +20,14 @@ import json
 import os
 import platform
 import re
-import shlex
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 import urllib.request
 
-VERSION = "1.2.0"
+VERSION = "1.2.1"
 HOME = os.path.expanduser("~")
 HS_DIR = os.path.join(HOME, ".hammerspoon")
 HARK_DIR = os.path.join(HS_DIR, "hark")
@@ -39,7 +39,11 @@ AGENT_PLIST = os.path.join(HOME, "Library/LaunchAgents", SERVER_LABEL + ".plist"
 KARABINER_JSON = os.path.join(HOME, ".config/karabiner/karabiner.json")
 KARABINER_ASSET = os.path.join(HOME, ".config/karabiner/assets/complex_modifications/hark.json")
 HEALTH_URL = "http://127.0.0.1:8178/health"
-INSTALL = "curl -fsSL https://hark.works/install.sh | bash"
+INSTALL = "curl -fsSL https://raw.githubusercontent.com/bath/hark-stt/main/install.sh | bash"
+# hark.works first, then GitHub, which serves the same file.
+INSTALLER_URLS = os.environ.get("HARK_INSTALLER_URLS",
+                                "https://hark.works/install.sh "
+                                "https://raw.githubusercontent.com/bath/hark-stt/main/install.sh").split()
 CLI = os.path.abspath(__file__)
 # Homebrew installs install.sh next to bin/; a curl install does not.
 BUNDLED_INSTALLER = os.path.join(os.path.dirname(os.path.dirname(CLI)), "install.sh")
@@ -267,12 +271,32 @@ def uninstall(args):
     return 0
 
 
+def download_installer():
+    """The first download that is the Hark installer, not an error or a parking page."""
+    for url in INSTALLER_URLS:
+        try:
+            with urllib.request.urlopen(url, timeout=30) as response:
+                script = response.read()
+        except OSError:
+            continue
+        if script.startswith(b"#!/usr/bin/env bash\n# Hark installer."):
+            return script
+        print("hark: %s is not the Hark installer; trying the next source" % url, file=sys.stderr)
+    return None
+
+
 def run_installer(args):
-    """Run the installer that came with this hark, or the latest one from hark.works."""
+    """Run the installer that came with this hark, or download the latest one."""
     if os.path.exists(BUNDLED_INSTALLER):
         return subprocess.run(["/bin/bash", BUNDLED_INSTALLER] + args).returncode
-    return subprocess.run("curl -fsSL https://hark.works/install.sh | bash -s -- " + shlex.join(args),
-                          shell=True).returncode
+    script = download_installer()
+    if script is None:
+        print("hark: could not download the installer from %s" % " or ".join(INSTALLER_URLS), file=sys.stderr)
+        return 1
+    with tempfile.NamedTemporaryFile(suffix="-hark-install.sh") as f:
+        f.write(script)
+        f.flush()
+        return subprocess.run(["/bin/bash", f.name] + args).returncode
 
 
 def update(args):

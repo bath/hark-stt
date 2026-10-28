@@ -3,8 +3,8 @@
 class Hark < Formula
   desc "Private, on-device dictation for macOS: press F5, talk, and the text is pasted"
   homepage "https://hark.works"
-  url "https://github.com/bath/hark-stt/archive/refs/tags/v1.1.0.tar.gz"
-  sha256 "61074931714e4c83ed43d00bd13e2b1f4c17f3b6b28309f1a06eeadb52a1dadc"
+  url "https://github.com/bath/hark-stt/archive/refs/tags/v1.2.0.tar.gz"
+  sha256 "04df5ce29c6c50bee8edc7d1314bb049ede7dbf0deae7b80bd296aa7586bd8dd"
   license "MIT"
 
   depends_on arch: :arm64
