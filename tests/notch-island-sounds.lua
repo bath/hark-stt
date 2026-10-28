@@ -15,6 +15,9 @@ local islandTick = nil
 local islandTimer = nil
 local recorderStream = nil
 local transcript = "test transcript"
+local pendingCurl = nil
+local pendingTimers = {}
+local mouseScreen = nil
 
 local function fakeCanvas(frame)
   local canvas = { shown = false, deleted = false, elements = {} }
@@ -29,10 +32,15 @@ local function fakeCanvas(frame)
   return canvas
 end
 
-local screen = {
+local builtIn = {
   fullFrame = function() return { x = 0, y = 0, w = 2056, h = 1329 } end,
   frame = function() return { x = 0, y = 39, w = 2056, h = 1197 } end,
 }
+local external = {
+  fullFrame = function() return { x = 941, y = -1080, w = 1920, h = 1080 } end,
+  frame = function() return { x = 941, y = -1055, w = 1920, h = 1055 } end,
+}
+mouseScreen = builtIn
 
 local fakeHs = {
   alert = { show = function() end },
@@ -68,14 +76,20 @@ local fakeHs = {
     end,
   },
   canvas = { new = fakeCanvas, windowLevels = { overlay = 102 } },
+  mouse = { getCurrentScreen = function() return mouseScreen end },
   screen = {
-    mainScreen = function() return screen end,
+    mainScreen = function() return builtIn end,
     watcher = { new = function() return { start = function() end, stop = function() end } end },
   },
   osascript = { javascript = function() return true, "0,2056,1329,918,918,38" end },
   timer = {
     absoluteTime = function() return clock end,
-    doAfter = function(_, callback) callback(); return { stop = function() end } end,
+    doAfter = function(_, callback)
+      local timer = { callback = callback }
+      function timer:stop() timer.callback = nil end
+      table.insert(pendingTimers, timer)
+      return timer
+    end,
     doEvery = function(interval, callback)
       local timer = { stopped = false }
       function timer:stop() timer.stopped = true end
@@ -92,7 +106,7 @@ local fakeHs = {
           recorderStream = function(line) stream(task, line .. "\n", "") end
           recorderStream('{"event":"ready","backend":"AUHAL","microphone_active":false,"sample_rate":48000}')
         elseif path == "/usr/bin/curl" then
-          completion(0, transcript, "")
+          pendingCurl = function() completion(0, transcript, "") end
         end
         return task
       end
@@ -116,6 +130,27 @@ local function advance(seconds)
     clock = clock + math.floor(1e9 / 60)
     if islandTick and not islandTimer.stopped then islandTick() end
   end
+end
+
+local function runTimers()
+  local timers = pendingTimers
+  pendingTimers = {}
+  for _, timer in ipairs(timers) do
+    if timer.callback then timer.callback() end
+  end
+end
+
+local function finishTranscription()
+  local finish = pendingCurl
+  pendingCurl = nil
+  finish()
+end
+
+local function textShown(canvas, text)
+  for _, element in ipairs(canvas.elements) do
+    if element.type == "text" and element.text == text then return true end
+  end
+  return false
 end
 
 local function pill(canvas)
@@ -147,21 +182,52 @@ assert(frame and math.abs(frame.w - (220 + 128)) < 2, "the pill should grow 64 p
 assert(hasElement(canvas, "text"), "recording should show the timer")
 assert(hasElement(canvas, "circle"), "recording should show the red dot")
 
--- Stop: the stop sound plays, then the pasted sound once the text lands, and
--- the pill shrinks back into the notch and hides.
+-- Stop: the stop sound plays and the pill says "Transcribing".
 module.toggle()
 assert(played[2] == soundDir .. "/pop/stop.wav", "stop should play the stop sound")
+advance(0.5)
+assert(textShown(canvas, "Transcribing"), "the pill should say Transcribing while Whisper works")
+assert(hasElement(canvas, "arc"), "transcribing should show the spinner")
+
+-- Pasted: the done sound plays, the pill shows a check and "Pasted", then it
+-- shrinks back into the notch and hides.
+finishTranscription()
 assert(played[3] == soundDir .. "/pop/done.wav", "a pasted transcript should play the done sound")
+advance(0.5)
+assert(textShown(canvas, "Pasted"), "the pill should say Pasted after the text lands")
+assert(hasElement(canvas, "segments"), "pasted should show the check mark")
+runTimers()
 advance(1.5)
 assert(not canvas.shown, "the island should hide once it is back inside the notch")
 assert(islandTimer.stopped, "the animation timer should stop when the island is idle")
 
--- No speech: the error sound plays.
+-- No speech: the error sound plays and the pill says so.
 transcript = "   "
 module.toggle()
 module.toggle()
+finishTranscription()
 assert(played[#played] == soundDir .. "/pop/error.wav", "an empty transcript should play the error sound")
+advance(0.5)
+assert(textShown(canvases[#canvases], "No speech"), "the pill should say No speech")
+runTimers()
 advance(1.5)
+
+-- Multi-monitor: the pill opens on the screen with the mouse pointer. This one
+-- has no notch, so the pill drops from its top center under the menu bar.
+mouseScreen = external
+transcript = "test transcript"
+module.toggle()
+local outside = canvases[#canvases]
+assert(outside ~= canvas and outside.shown, "a new island should open on the screen with the pointer")
+local f = outside:frame()
+assert(math.abs(f.x + f.w / 2 - (941 + 960)) < 1 and f.y == -1080, "the island should center on the external screen's top edge")
+advance(0.8)
+assert(math.abs(pill(outside).h - 14 - (25 + 6)) < 1, "with no notch the pill should be the menu bar height plus 6 pt")
+module.toggle()
+finishTranscription()
+runTimers()
+advance(1.5)
+mouseScreen = builtIn
 
 -- The menu choices are respected: sounds off, island off.
 settings["whisperDictation.soundPack"] = "off"
@@ -172,5 +238,6 @@ module.toggle()
 assert(#played == playedBefore, "no sound should play when sounds are off")
 assert(#canvases == canvasesBefore and not canvases[#canvases].shown, "no island should show when it is turned off")
 module.toggle()
+finishTranscription()
 
-print("PASS: notch island animates and each transition plays its sound")
+print("PASS: notch island shows each dictation state on the pointer's screen and plays its sound")

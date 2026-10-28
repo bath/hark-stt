@@ -134,17 +134,21 @@ loadSoundPacks()
 
 -- ---- notch island -------------------------------------------------------------
 -- While recording, the MacBook notch grows sideways into a black pill: a red
--- dot and a timer on the left, voice bars on the right, a spinner while
--- transcribing. A screen with no notch gets the same pill dropping from the
--- top center. It appears on the screen of the focused window.
-local ISLAND_WING = 64   -- how far the pill grows past each side of the notch, in points
-local ISLAND_CORE = 64   -- empty center of the pill on screens with no notch
+-- dot and a timer on the left, voice bars on the right. Then it shows
+-- "Transcribing" with a spinner, then a green check and "Pasted" (or what went
+-- wrong) before it shrinks back into the notch. A screen with no notch gets
+-- the same pill dropping from the top center. It appears on the screen that
+-- has the mouse pointer.
+local ISLAND_WINGS = { recording = 64, transcribing = 96, done = 72, error = 84 } -- growth past each side, in points
+local ISLAND_CORE = 16   -- empty center of the pill on screens with no notch
 local ISLAND_BARS = 5
+local ISLAND_HOLD = { done = 1.2, error = 1.6 } -- seconds a result stays before the pill closes
 local RED = { red = 1, green = 0.27, blue = 0.23 }
+local GREEN = { red = 0.19, green = 0.82, blue = 0.35 }
 
 local island = {
-  mode = "idle", rec = 0, proc = 0, level = 0, targetLevel = 0, levelAt = 0,
-  recStart = 0, elapsed = 0, bands = {}, w = { x = 0, v = 0 }, h = { x = 0, v = 0 },
+  mode = "idle", rec = 0, proc = 0, done = 0, err = 0, level = 0, targetLevel = 0, levelAt = 0,
+  recStart = 0, elapsed = 0, message = "", bands = {}, w = { x = 0, v = 0 }, h = { x = 0, v = 0 },
 }
 for i = 1, ISLAND_BARS do island.bands[i] = 0 end
 local notchByScreen = {}
@@ -210,11 +214,24 @@ local function islandHide()
   if island.canvas then island.canvas:hide() end
 end
 
+local function rgba(color, alpha)
+  return { red = color.red, green = color.green, blue = color.blue, alpha = alpha }
+end
+
+local function islandLabel(elements, text, right, cy, alpha)
+  table.insert(elements, {
+    type = "text", frame = { x = right - 100, y = cy - 8, w = 100, h = 16 }, text = text,
+    textFont = ".AppleSystemUIFontDemi", textSize = 12, textAlignment = "right",
+    textColor = { white = 1, alpha = alpha },
+  })
+end
+
 local function islandDraw(t)
   local g, canvas = island.geometry, island.canvas
   local W, H = math.max(0, island.w.x), math.max(0, island.h.x)
   local cw = canvas:frame().w
   local x0, x1, cy = cw / 2 - W / 2, cw / 2 + W / 2, H / 2
+  local left, right = x0 + 20, x1 - 14
   local elements = {}
   if W > 1 and H > 1 then
     local r = math.min(14, H / 2)
@@ -223,48 +240,61 @@ local function islandDraw(t)
       type = "rectangle", action = "fill", fillColor = { white = 0, alpha = 1 },
       frame = { x = x0, y = -r, w = W, h = H + r }, roundedRectRadii = { xRadius = r, yRadius = r },
     })
-    local act = math.max(island.rec, island.proc)
-    local alpha = clamp((W - g.restW) / (ISLAND_WING * 1.6)) * clamp(act * 1.3 - 0.15)
-    if alpha > 0.02 then
+    local open = clamp((W - g.restW) / 80)
+    local a = open * clamp(math.max(island.rec, island.proc, island.done, island.err) * 1.3 - 0.15)
+    if a > 0.02 then
       if island.rec > 0.01 then
         local blink = 0.5 + 0.5 * math.cos(t * 2 * math.pi)
         table.insert(elements, {
-          type = "circle", action = "fill", center = { x = x0 + 18, y = cy }, radius = 4,
-          fillColor = { red = RED.red, green = RED.green, blue = RED.blue, alpha = alpha * island.rec * (0.55 + 0.45 * blink) },
+          type = "circle", action = "fill", center = { x = left - 2, y = cy }, radius = 4,
+          fillColor = rgba(RED, a * island.rec * (0.55 + 0.45 * blink)),
         })
         local seconds = math.floor(island.elapsed)
         table.insert(elements, {
-          type = "text", frame = { x = x0 + 28, y = cy - 8, w = 44, h = 16 },
+          type = "text", frame = { x = left + 8, y = cy - 8, w = 44, h = 16 },
           text = string.format("%d:%02d", seconds // 60, seconds % 60),
-          textFont = ".AppleSystemUIFontDemi", textSize = 12,
-          textColor = { white = 1, alpha = alpha * island.rec },
+          textFont = ".AppleSystemUIFontDemi", textSize = 12, textColor = { white = 1, alpha = a * island.rec },
         })
+        for i = 1, ISLAND_BARS do
+          local bh = 3 + island.bands[i] * (H - 16)
+          table.insert(elements, {
+            type = "rectangle", action = "fill", fillColor = rgba(RED, a * island.rec),
+            frame = { x = right - 6 - (i - 1) * 5, y = cy - bh / 2, w = 2.6, h = bh },
+            roundedRectRadii = { xRadius = 1.3, yRadius = 1.3 },
+          })
+        end
       end
       if island.proc > 0.01 then
         local start = (t * 340) % 360
         table.insert(elements, {
-          type = "arc", action = "stroke", arcRadii = false, center = { x = x0 + 20, y = cy }, radius = 6,
+          type = "arc", action = "stroke", arcRadii = false, center = { x = left, y = cy }, radius = 6,
           startAngle = start, endAngle = start + 250, strokeWidth = 1.8, strokeCapStyle = "round",
-          strokeColor = { white = 1, alpha = alpha * island.proc },
+          strokeColor = { white = 1, alpha = a * island.proc },
         })
+        islandLabel(elements, "Transcribing", right, cy, a * island.proc * 0.92)
       end
-      local mix = island.proc / (island.rec + island.proc + 1e-4)
-      local color = {
-        red = RED.red + (1 - RED.red) * mix, green = RED.green + (1 - RED.green) * mix,
-        blue = RED.blue + (1 - RED.blue) * mix, alpha = alpha,
-      }
-      for i = 1, ISLAND_BARS do
-        local live = 3 + island.bands[i] * (H - 16)
-        local wave = 3 + 5 * (0.5 + 0.5 * math.sin(t * 6 - i))
-        local bh = live * (1 - mix) + wave * mix
+      if island.done > 0.01 then
         table.insert(elements, {
-          type = "rectangle", action = "fill", fillColor = color,
-          frame = { x = x1 - 20 - (i - 1) * 5, y = cy - bh / 2, w = 2.6, h = bh },
-          roundedRectRadii = { xRadius = 1.3, yRadius = 1.3 },
+          type = "segments", action = "stroke", closed = false, strokeWidth = 2.2,
+          strokeCapStyle = "round", strokeJoinStyle = "round", strokeColor = rgba(GREEN, a * island.done),
+          coordinates = { { x = left - 5, y = cy + 0.5 }, { x = left - 1.5, y = cy + 4 }, { x = left + 5.5, y = cy - 3.5 } },
         })
+        islandLabel(elements, "Pasted", right, cy, a * island.done * 0.92)
+      end
+      if island.err > 0.01 then
+        for _, d in ipairs({ 1, -1 }) do
+          table.insert(elements, {
+            type = "segments", action = "stroke", closed = false, strokeWidth = 2, strokeCapStyle = "round",
+            strokeColor = rgba(RED, a * island.err),
+            coordinates = { { x = left - 4, y = cy - 4 * d }, { x = left + 4, y = cy + 4 * d } },
+          })
+        end
+        islandLabel(elements, island.message, right, cy, a * island.err * 0.92)
       end
     end
   end
+  -- replaceElements reads an empty list as one bad element, so draw nothing explicitly.
+  if #elements == 0 then table.insert(elements, { type = "rectangle", action = "skip" }) end
   canvas:replaceElements(elements)
 end
 
@@ -273,12 +303,15 @@ local function islandStep()
   local dt = math.min(0.05, t - (island.lastTick or t))
   island.lastTick = t
   local g = island.geometry
-  local active = island.mode ~= "idle"
-  spring(island.w, active and (g.core + 2 * ISLAND_WING) or g.restW, dt, 260, 0.62)
-  spring(island.h, active and g.height or g.restH, dt, 260, 0.72)
-  local ease = 1 - math.exp(-dt * 9)
-  island.rec = island.rec + ((island.mode == "recording" and 1 or 0) - island.rec) * ease
-  island.proc = island.proc + ((island.mode == "transcribing" and 1 or 0) - island.proc) * ease
+  local wing = ISLAND_WINGS[island.mode]
+  spring(island.w, wing and (g.core + 2 * wing) or g.restW, dt, 260, 0.62)
+  spring(island.h, wing and g.height or g.restH, dt, 260, 0.72)
+  -- The old state fades out faster than the new one fades in, so labels never overlap.
+  local fadeIn, fadeOut = 1 - math.exp(-dt * 12), 1 - math.exp(-dt * 40)
+  for key, mode in pairs({ rec = "recording", proc = "transcribing", done = "done", err = "error" }) do
+    local on = island.mode == mode
+    island[key] = island[key] + ((on and 1 or 0) - island[key]) * (on and fadeIn or fadeOut)
+  end
   if island.mode == "recording" then island.elapsed = t - island.recStart end
   local target = (island.mode == "recording" and t - island.levelAt < 0.25) and island.targetLevel or 0
   island.level = island.level + (target - island.level) * (1 - math.exp(-dt * 18))
@@ -290,21 +323,20 @@ local function islandStep()
   islandDraw(t)
   local settled = math.abs(island.w.x - g.restW) < 0.5 and math.abs(island.w.v) < 2
     and math.abs(island.h.x - g.restH) < 0.5
-  if not active and settled then islandHide() end
+  if not wing and settled then islandHide() end
 end
 
 local function islandOpen()
-  local screen = hs.screen.mainScreen()
-  if not screen then return false end
+  local screen = (hs.mouse and hs.mouse.getCurrentScreen()) or hs.screen.mainScreen()
+  if not screen then return end
   local g = islandGeometry(screen)
-  local width = g.core + 2 * ISLAND_WING + 40
-  local frame = { x = g.full.x + g.cx - width / 2, y = g.full.y, w = width, h = g.height + 20 }
-  local reuse = island.canvas and island.timer and island.geometry
+  local same = island.canvas and island.timer and island.geometry
     and screenKey(island.geometry.full.x, island.geometry.full.w, island.geometry.full.h)
       == screenKey(g.full.x, g.full.w, g.full.h)
-  if not reuse then
+  if not same then
+    local width = g.core + 2 * ISLAND_WINGS.transcribing + 40
     if island.canvas then island.canvas:delete() end
-    island.canvas = hs.canvas.new(frame)
+    island.canvas = hs.canvas.new({ x = g.full.x + g.cx - width / 2, y = g.full.y, w = width, h = g.height + 20 })
     island.canvas:level(hs.canvas.windowLevels.overlay)
     island.canvas:behaviorAsLabels({ "canJoinAllSpaces", "stationary", "fullScreenAuxiliary" })
     island.w = { x = g.restW, v = 0 }
@@ -316,17 +348,23 @@ local function islandOpen()
     island.lastTick = nil
     island.timer = hs.timer.doEvery(1 / 60, islandStep)
   end
-  return true
 end
 
-local function islandSetMode(mode)
-  local t = hs.timer.absoluteTime() / 1e9
+local function islandSetMode(mode, message)
+  if island.holdTimer then island.holdTimer:stop(); island.holdTimer = nil end
   if mode == "recording" then
-    island.recStart, island.elapsed, island.targetLevel = t, 0, 0
+    island.recStart, island.elapsed, island.targetLevel = nowSeconds(), 0, 0
   end
   island.mode = mode
+  island.message = message or island.message
   if not hs.canvas or not getSetting("notchIsland", true) then return end
-  if mode ~= "idle" then islandOpen() end
+  -- Later states reuse the pill this dictation opened, on the same screen.
+  if mode == "recording" then islandOpen() end
+  if ISLAND_HOLD[mode] then
+    island.holdTimer = hs.timer.doAfter(ISLAND_HOLD[mode], function()
+      if island.mode == mode then island.mode = "idle" end
+    end)
+  end
 end
 
 -- Recorder levels arrive as RMS (0–1). Room noise sits near -50 dB and close
@@ -338,10 +376,11 @@ local function islandLevel(rms)
 end
 
 -- One place for every phase change the user should see and hear.
-local function signal(transition)
+local function signal(transition, message)
   if transition == "start" then islandSetMode("recording")
   elseif transition == "stop" then islandSetMode("transcribing")
-  else islandSetMode("idle") end
+  elseif transition == "done" then islandSetMode("done")
+  else islandSetMode("error", message or "Failed") end
   playSound(transition)
 end
 
@@ -392,7 +431,7 @@ local function transcribe(path)
     phase = "warming"
     setIcon("⏳")
     hs.alert.show("Whisper is restarting — try again in a moment")
-    signal("error")
+    signal("error", "Restarting")
     return
   end
 
@@ -410,7 +449,7 @@ local function transcribe(path)
       -- The most common cause is a dead server; re-enter the health-poll loop
       -- so a launchd-restarted server is adopted without a config reload.
       resetServer()
-      signal("error")
+      signal("error", "Failed")
       return
     end
     if recorderReady and serverReady then
@@ -420,7 +459,7 @@ local function transcribe(path)
       phase = "warming"
       setIcon("⏳")
     end
-    signal(typeText(stdout) and "done" or "error")
+    if typeText(stdout) then signal("done") else signal("error", "No speech") end
   end, {
     "-sS", "--fail-with-body",
     "-F", "file=@" .. path,
@@ -457,7 +496,7 @@ local function handleRecorderEvent(event)
     microphoneActive = false
     phase = "warming"
     setIcon("⏳")
-    if wasDictating then signal("error") end
+    if wasDictating then signal("error", "Mic error") end
     print("Recorder error: " .. tostring(event.message or "unknown error"))
   end
 end
@@ -488,7 +527,7 @@ local function startRecorder()
     recorderTask = nil
     recorderReady = false
     if not shuttingDown then
-      if phase == "recording" or phase == "transcribing" then signal("error") end
+      if phase == "recording" or phase == "transcribing" then signal("error", "Mic error") end
       phase = "warming"
       setIcon("⏳")
       recorderRetries = recorderRetries + 1
@@ -567,7 +606,144 @@ local function stopRecording()
   recorderTask:setInput("STOP\n")
 end
 
+-- ---- welcome popup ------------------------------------------------------------
+-- Shown once, on the first press of the dictation key after this version is
+-- installed. F5 or "Start dictating" closes it and starts recording; Esc or
+-- "Close" only closes it. The window never takes focus, so the text field the
+-- user was in keeps it.
+local ONBOARDING_VERSION = 1
+local ONBOARDING_HTML = [==[
+<!doctype html><html><head><meta charset="utf-8"><style>
+html, body { margin: 0; background: transparent; -webkit-user-select: none; cursor: default;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif; -webkit-font-smoothing: antialiased; }
+body { display: flex; justify-content: center; padding-top: 24px; }
+.card { width: 380px; border-radius: 28px; background: #fffdf8; color: #2b1d10; padding: 12px 12px 18px; box-sizing: border-box;
+  box-shadow: 0 0 0 0.5px rgba(80,50,20,.12), 0 30px 60px -20px rgba(90,55,20,.55);
+  animation: cardIn 420ms cubic-bezier(.34,1.3,.64,1) backwards; transition: opacity 180ms ease, transform 180ms ease; }
+.card.out { opacity: 0; transform: scale(.97); }
+@keyframes cardIn { from { opacity: 0; transform: translateY(16px) scale(.95) rotate(-1.2deg); } }
+.scene { position: relative; height: 120px; border-radius: 18px; overflow: hidden;
+  background: radial-gradient(80% 90% at 20% 100%, #ffb36b, transparent 60%), radial-gradient(70% 80% at 90% 0%, #7a5cff, transparent 60%), linear-gradient(160deg, #3b2a6b, #e0735a); }
+.mb { position: absolute; inset: 0 0 auto; height: 20px; background: rgba(0,0,0,.15); }
+.isl { position: absolute; top: 0; left: 50%; width: 220px; height: 26px; transform: translateX(-50%);
+  background: #000; border-radius: 0 0 14px 14px; overflow: hidden; animation: islW 7s cubic-bezier(.32,.72,0,1) infinite; }
+.isl > div { position: absolute; inset: 0; display: flex; align-items: center; justify-content: space-between; padding: 0 12px;
+  font-size: 11px; font-weight: 600; color: #fff; white-space: nowrap; }
+.rec { animation: islRec 7s ease infinite; }
+.rec .l { display: flex; gap: 6px; align-items: center; font-variant-numeric: tabular-nums; }
+.rec .l i { width: 7px; height: 7px; border-radius: 50%; background: #ff453a; }
+.bars { display: flex; gap: 2px; align-items: center; height: 14px; }
+.bars span { width: 2.5px; border-radius: 2px; background: #ff453a; height: 6px; animation: bar 520ms ease-in-out infinite alternate; }
+.bars span:nth-child(1) { height: 5px; } .bars span:nth-child(2) { height: 11px; animation-delay: -120ms; }
+.bars span:nth-child(3) { height: 8px; animation-delay: -300ms; } .bars span:nth-child(4) { height: 13px; animation-delay: -60ms; }
+.bars span:nth-child(5) { height: 6px; animation-delay: -420ms; }
+.busy, .done { justify-content: center !important; gap: 6px; opacity: 0; }
+.busy { animation: islBusy 7s ease infinite; } .done { animation: islDone 7s ease infinite; }
+.spin { width: 11px; height: 11px; border-radius: 50%; border: 2px solid rgba(255,255,255,.25); border-top-color: #fff; box-sizing: border-box; animation: spin 800ms linear infinite; }
+.field { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); width: 250px; height: 34px; border-radius: 9px; box-sizing: border-box;
+  background: rgba(255,255,255,.88); color: #1d1d1f; font-size: 13px; display: flex; align-items: center; padding: 0 12px; gap: 1px; }
+.field .txt { animation: islText 7s ease infinite; }
+.field .caret { width: 1.5px; height: 15px; background: #0a84ff; }
+h3 { margin: 16px 8px 10px; font-size: 18px; font-weight: 700; letter-spacing: -0.015em; }
+ul { list-style: none; margin: 0 8px; padding: 0; display: grid; gap: 8px; }
+li { display: flex; gap: 10px; align-items: center; font-size: 14px; color: #4a3a2a; }
+li .b { width: 22px; height: 22px; border-radius: 7px; flex: none; display: grid; place-items: center; font-size: 12px; font-weight: 600; }
+kbd { font: 600 12px -apple-system, BlinkMacSystemFont, sans-serif; padding: 1px 6px; border-radius: 5px; white-space: nowrap; background: #f1e8da; color: #2b1d10; }
+.foot { display: flex; align-items: center; gap: 12px; margin: 16px 8px 0; }
+.go { white-space: nowrap; font: 600 14px -apple-system, BlinkMacSystemFont, sans-serif; color: #fff; background: #ff3b30; border: 0; border-radius: 999px; padding: 9px 18px; cursor: pointer; }
+.go:active { transform: scale(.97); }
+.close { font: 500 13px -apple-system, BlinkMacSystemFont, sans-serif; color: #9a8670; background: none; border: 0; padding: 6px; cursor: pointer; }
+.hint { margin: 12px 8px 0; font-size: 11.5px; color: #9a8670; }
+@keyframes islW { 0%, 12% { width: 120px; } 18%, 55% { width: 220px; } 60%, 78% { width: 150px; } 82%, 95% { width: 170px; } 100% { width: 120px; } }
+@keyframes islRec { 0%, 15% { opacity: 0; } 20%, 54% { opacity: 1; } 57%, 100% { opacity: 0; } }
+@keyframes islBusy { 0%, 57% { opacity: 0; } 61%, 77% { opacity: 1; } 80%, 100% { opacity: 0; } }
+@keyframes islDone { 0%, 80% { opacity: 0; } 84%, 94% { opacity: 1; } 98%, 100% { opacity: 0; } }
+@keyframes islText { 0%, 82% { opacity: 0; } 86%, 97% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes bar { from { transform: scaleY(.45); } to { transform: scaleY(1.1); } }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .card { animation: fade 160ms ease-out backwards; } .card * { animation: none !important; }
+  .rec { opacity: 1; } @keyframes fade { from { opacity: 0; } }
+}
+</style></head><body>
+<div class="card">
+  <div class="scene">
+    <div class="mb"></div>
+    <div class="isl">
+      <div class="rec"><span class="l"><i></i>0:04</span><span class="bars"><span></span><span></span><span></span><span></span><span></span></span></div>
+      <div class="busy"><span class="spin"></span>Transcribing</div>
+      <div class="done"><svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="#30d158" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6.5l2.5 2.5L10 3.5"/></svg>Pasted</div>
+    </div>
+    <div class="field"><span class="txt">Pick up oat milk on the way</span><span class="caret"></span></div>
+  </div>
+  <h3>Your notch now listens back.</h3>
+  <ul>
+    <li><span class="b" style="background:#ffe3df;color:#d70015">●</span><span><kbd>F5</kbd> to talk, <kbd>F5</kbd> again to stop.</span></li>
+    <li><span class="b" style="background:#e6f0ff;color:#0060df">I</span>Text lands wherever your cursor is.</li>
+    <li><span class="b" style="background:#efe6ff;color:#6b3fd4">⌘</span><span>Your last transcript stays on the clipboard.</span></li>
+    <li><span class="b" style="background:#fff0d9;color:#b25e00">♪</span>A short sound on start, stop and paste.</li>
+    <li><span class="b" style="background:#e3f6e8;color:#1a7f37">✓</span>Everything stays on your Mac.</li>
+  </ul>
+  <div class="foot">
+    <button class="go" type="button" id="go">Start dictating</button>
+    <button class="close" type="button" id="close">Close</button>
+  </div>
+  <p class="hint">Pick sounds or turn them off in the 🎙 menu.</p>
+</div>
+<script>
+function post(message) { try { webkit.messageHandlers.whisperDictation.postMessage(message); } catch (e) {} }
+function closeCard() { document.querySelector(".card").classList.add("out"); }
+document.getElementById("go").addEventListener("click", function () { post("start"); });
+document.getElementById("close").addEventListener("click", function () { post("close"); });
+</script>
+</body></html>
+]==]
+
+local onboarding = nil
+
+local function onboardingPending()
+  return hs.webview ~= nil and getSetting("onboardingVersion", 0) < ONBOARDING_VERSION
+end
+
+local function closeOnboarding(startAfter)
+  local current = onboarding
+  if not current then return end
+  onboarding = nil
+  setSetting("onboardingVersion", ONBOARDING_VERSION)
+  current.escape:delete()
+  current.view:evaluateJavaScript("closeCard()")
+  current.cleanup = hs.timer.doAfter(0.2, function() current.view:delete() end)
+  if startAfter then startRecording() end
+end
+
+local function showOnboarding()
+  if onboarding or not hs.webview then return end
+  local screen = (hs.mouse and hs.mouse.getCurrentScreen()) or hs.screen.mainScreen()
+  local f = screen:frame()
+  local w, h = 440, 520
+  local content = hs.webview.usercontent.new("whisperDictation")
+  content:setCallback(function(message)
+    if message.body == "start" then closeOnboarding(true)
+    elseif message.body == "close" then closeOnboarding(false) end
+  end)
+  local view = hs.webview.new({ x = f.x + (f.w - w) / 2, y = f.y + (f.h - h) / 2 - 40, w = w, h = h },
+    { developerExtrasEnabled = false }, content)
+  view:windowStyle({ "borderless", "nonactivating" })
+  view:transparent(true)
+  view:allowTextEntry(false)
+  view:level(hs.canvas.windowLevels.modalPanel)
+  view:behaviorAsLabels({ "canJoinAllSpaces", "fullScreenAuxiliary" })
+  view:html(ONBOARDING_HTML)
+  view:show()
+  onboarding = {
+    view = view, content = content,
+    escape = hs.hotkey.bind({}, "escape", function() closeOnboarding(false) end),
+  }
+end
+
 local function toggle()
+  if onboarding then closeOnboarding(true); return end
+  if phase ~= "recording" and onboardingPending() then showOnboarding(); return end
   if phase == "recording" then stopRecording() else startRecording() end
 end
 
@@ -617,6 +793,7 @@ if menu then
       end },
       { title = "Sound", menu = soundMenu() },
       { title = "Preview animation and sounds", disabled = phase ~= "ready", fn = previewDictation },
+      { title = "Show welcome screen", fn = showOnboarding },
       { title = "-" },
       { title = "Reload Hammerspoon config", fn = function() hs.reload() end },
     }
@@ -635,6 +812,7 @@ hs.shutdownCallback = function()
   islandHide()
   if island.canvas then island.canvas:delete() end
   if screenWatcher then screenWatcher:stop() end
+  if onboarding then onboarding.view:delete() end
   if previousShutdownCallback then previousShutdownCallback() end
 end
 
@@ -644,6 +822,7 @@ watchServer()
 return {
   toggle = toggle,
   preview = previewDictation,
+  welcome = showOnboarding,
   status = function() return phase end,
   diagnostics = function()
     return {
