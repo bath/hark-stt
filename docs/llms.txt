@@ -20,9 +20,9 @@ To install Hark for a user, an agent runs the installer with `--json`, then repe
 
 ## Facts
 
-- Requirements: macOS on Apple silicon, Homebrew, Apple Command Line Tools. The installer adds whisper-cpp, Hammerspoon and (unless `--no-karabiner`) Karabiner-Elements.
+- Requirements: macOS on Apple silicon, Homebrew, Apple Command Line Tools. The installer adds whisper.cpp, Hammerspoon and (unless `--no-karabiner`) Karabiner-Elements.
 - Human steps macOS requires: Hammerspoon under Privacy & Security → Microphone and → Accessibility; for F5, Karabiner's driver, Input Monitoring and the rule "F5 / Dictation key → F18".
-- Network: only 127.0.0.1 at run time. The installer downloads the ~550 MB model once from Hugging Face.
+- Network: audio and text go only to 127.0.0.1. The installer downloads the ~550 MB model once from Hugging Face. The 🎙 menu item Check for Updates asks the GitHub API for the latest release, only when the user clicks it.
 - The mic is off until the hotkey and is released when recording stops.
 - Text arrives after the user stops talking, in one paste. The last transcript stays on the clipboard.
 - Notch Island: the MacBook notch shows recording, "Transcribing" and "Pasted". 26 sound packs mark each step.

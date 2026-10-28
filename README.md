@@ -53,7 +53,7 @@ hark setup
 
 - **Dictation in any text field.** Mail, Slack, your editor, a browser form. The text is pasted where your cursor is.
 - **Whisper large-v3-turbo on your own machine.** [whisper.cpp](https://github.com/ggerganov/whisper.cpp) keeps the model loaded in a local server, so there is no startup wait per dictation.
-- **Nothing leaves the Mac.** The only network traffic is to `127.0.0.1`. The installer downloads the model once from Hugging Face.
+- **Nothing leaves the Mac.** Your audio and text go only to `127.0.0.1`. The installer downloads the model once from Hugging Face. Hark goes to GitHub only when you click Check for Updates.
 - **The mic is off until you press F5.** A small native helper keeps the audio input ready but stopped, and releases the mic as soon as you stop talking. The orange mic dot in the menu bar shows only during a take.
 - **Notch Island.** The MacBook notch grows into a black pill while you talk. It shows a red dot, a timer and voice bars that follow your voice. Then it shows "Transcribing", then a green check and "Pasted". On a screen with no notch, the pill drops from the top center. It opens on the screen that has your mouse pointer.
 - **Sounds for each step.** 26 sound packs, each with a sound for start, stop, pasted and error. Pick one, or turn sounds off, in the 🎙 menu.
@@ -64,7 +64,7 @@ hark setup
 
 The installer:
 
-1. Installs `whisper-cpp`, [Hammerspoon](https://www.hammerspoon.org) and [Karabiner-Elements](https://karabiner-elements.pqrs.org) with Homebrew.
+1. Installs `whisper.cpp`, [Hammerspoon](https://www.hammerspoon.org) and [Karabiner-Elements](https://karabiner-elements.pqrs.org) with Homebrew.
 2. Downloads the Whisper model (about 550 MB) to `~/.cache/whisper`.
 3. Builds the native recorder helper and the sound library into `~/.hammerspoon/hark`.
 4. Starts `whisper-server` as a launchd agent, so it stays up across crashes and reboots.
@@ -111,6 +111,7 @@ The first press after you install or update shows a short welcome card. Press F5
 | Sound | Picks a sound pack, sets the volume, or turns sounds off. Picking a pack plays it. |
 | Preview animation and sounds | Plays a fake 3-second dictation. Nothing is recorded or pasted. |
 | Show welcome screen | Shows the welcome card again. |
+| Check for Updates… | Asks GitHub for the latest release. If there is a newer one, click Update. Hammerspoon restarts at the end, and an alert shows the new version. |
 
 ### Sound packs
 
@@ -189,7 +190,7 @@ To change the Whisper model or other server flags, edit `~/Library/LaunchAgents/
 
 ## FAQ
 
-**How is this different from Apple Dictation?** It uses Whisper large-v3-turbo, works with the same key in every app, and never needs a network connection after install. You can turn Apple Dictation off (step 3 above) so the two do not conflict.
+**How is this different from Apple Dictation?** It uses Whisper large-v3-turbo, works with the same key in every app, and never needs a network connection after install, except to check for updates when you ask. You can turn Apple Dictation off (step 3 above) so the two do not conflict.
 
 **Does it type while I talk?** No. Whisper gets the whole take after you stop, so the text arrives in one paste.
 
@@ -241,13 +242,15 @@ dofile("/path/to/hark-stt/tests/onboarding.lua")
 
 ## Update
 
+In the 🎙 menu, click **Check for Updates…**. Or run:
+
 ```sh
 ~/.hammerspoon/hark/bin/hark update   # or `hark update` if you installed with Homebrew
 ```
 
 For a Homebrew install, `hark update` runs `brew upgrade hark` and then `hark setup`. For a curl install, it runs the latest installer from hark.works. It keeps your choice of F5 or ⌥Space. If you run only `brew upgrade hark`, run `hark setup` after it. Until you do, `hark doctor` shows the `hark_current` check as failed.
 
-Hark 1.0.0 has no `update` command. To update from 1.0.0, run the installer again.
+Hark 1.0.0 has no `update` command, and Hark 1.1.0 has no menu item. To update from those versions, run the installer again or run `hark update` (1.1.0).
 
 ## Uninstall
 

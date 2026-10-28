@@ -126,6 +126,8 @@ Do this when the user asks you to update or upgrade Hark.
 3. The output ends with the doctor report. Fix what it reports, the same as in step 4 of the install. An update keeps the macOS permissions, so you usually do not have to ask the user for anything.
 4. Tell the user the new version (`hark version`).
 
+From version 1.2.0, the user can also update without you: 🎙 menu → Check for Updates….
+
 If you run `brew upgrade hark` yourself, run `hark setup --json` after it. `brew upgrade` changes only the files in Homebrew. The `hark_current` doctor check fails until `hark setup` copies the new files to `~/.hammerspoon/hark`.
 
 ## Remove Hark
