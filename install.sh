@@ -1,30 +1,51 @@
 #!/usr/bin/env bash
-# whisper-dictation installer.
+# Hark installer. Private, on-device dictation for macOS.
 # Run it either way:
-#   curl -fsSL https://raw.githubusercontent.com/bath/whisper-dictation/main/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/bath/hark-stt/main/install.sh | bash
 #   ./install.sh            (from a local clone)
 #
-# Does everything that CAN be automated: installs deps via Homebrew, downloads the
-# Whisper model, builds the native recorder, drops the configs, and restarts Hammerspoon.
-# It CANNOT grant macOS permissions (Microphone/Accessibility/driver approval) —
-# those are user-gated by macOS and printed as manual steps at the end.
+# Options (pass after `bash -s --` when piping from curl):
+#   --no-karabiner   skip Karabiner-Elements; dictate with ⌥Space instead of F5
+#   --json           print only the final `hark doctor --json` report on stdout
+#                    (progress goes to stderr), for AI agents and scripts
+#
+# It installs everything that CAN be automated: Homebrew packages, the Whisper
+# model, the native recorder, the sound library, the configs and the server
+# LaunchAgent. It CANNOT grant macOS permissions (Microphone, Accessibility,
+# Karabiner's driver and rule). `hark doctor` lists what is left and how to fix it.
+# An existing whisper-dictation install is moved to the Hark names.
 set -euo pipefail
 
-RAW="https://raw.githubusercontent.com/bath/whisper-dictation/main"
+RAW="https://raw.githubusercontent.com/bath/hark-stt/main"
 MODEL_DIR="$HOME/.cache/whisper"
 MODEL="$MODEL_DIR/ggml-large-v3-turbo-q5_0.bin"
 MODEL_URL="https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo-q5_0.bin"
 HS_DIR="$HOME/.hammerspoon"
-RECORDER_SRC="$HS_DIR/WhisperRecorder.swift"
-RECORDER_DIR="$HS_DIR/bin"
-RECORDER="$RECORDER_DIR/whisper-recorder"
+HARK_DIR="$HS_DIR/hark"
+RECORDER_SRC="$HARK_DIR/HarkRecorder.swift"
+RECORDER="$HARK_DIR/bin/hark-recorder"
 KB_DIR="$HOME/.config/karabiner/assets/complex_modifications"
 APPLICATIONS_DIR="${APPLICATIONS_DIR:-/Applications}"
-SERVER_LABEL="com.whisper-dictation.server"
+SERVER_LABEL="com.hark-stt.server"
 AGENT_DIR="$HOME/Library/LaunchAgents"
 AGENT_PLIST="$AGENT_DIR/$SERVER_LABEL.plist"
 SERVER_PORT=8178
-SERVER_LOG="/tmp/whisper-server.log"
+SERVER_LOG="/tmp/hark-server.log"
+OLD_SERVER_LABEL="com.whisper-dictation.server"
+
+WITH_KARABINER=1
+JSON=0
+for arg in "$@"; do
+  case "$arg" in
+    --no-karabiner) WITH_KARABINER=0 ;;
+    --json) JSON=1 ;;
+    -h|--help) sed -n '2,17p' "${BASH_SOURCE[0]:-/dev/null}" 2>/dev/null || true; exit 0 ;;
+    *) echo "Unknown option: $arg (try --help)" >&2; exit 2 ;;
+  esac
+done
+
+# In --json mode stdout carries only the doctor report.
+if [ "$JSON" = 1 ]; then exec 3>&1 1>&2; else exec 3>&1; fi
 
 bold() { printf '\033[1m%s\033[0m\n' "$1"; }
 say()  { printf '\033[1;34m==>\033[0m %s\n' "$1"; }
@@ -36,7 +57,7 @@ brew_install() { brew install "$@" </dev/null; }
 # Use local files if run from a clone; otherwise download them.
 SELF="${BASH_SOURCE[0]:-}"
 SRC_DIR=""
-if [ -n "$SELF" ] && [ -f "$(dirname "$SELF")/whisper-dictation.lua" ]; then
+if [ -n "$SELF" ] && [ -f "$(dirname "$SELF")/hark.lua" ]; then
   SRC_DIR="$(cd "$(dirname "$SELF")" && pwd)"
 fi
 fetch() { # <repo-relative-path> <dest>
@@ -44,7 +65,7 @@ fetch() { # <repo-relative-path> <dest>
   else curl -fsSL "$RAW/$1" -o "$2"; fi
 }
 
-[ "$(uname)" = "Darwin" ] || { echo "This is macOS-only."; exit 1; }
+[ "$(uname)" = "Darwin" ] || { echo "Hark is macOS-only."; exit 1; }
 
 say "Homebrew"
 if ! have brew; then
@@ -62,10 +83,13 @@ have xcrun && xcrun --find swiftc >/dev/null 2>&1 || {
 }
 echo "  ok"
 
-say "Apps (Hammerspoon, Karabiner-Elements)"
-# Casks may prompt for your password (Karabiner installs a system driver).
-[ -d "$APPLICATIONS_DIR/Hammerspoon.app" ]        || { echo "  installing hammerspoon";        brew_install --cask hammerspoon; }
-[ -d "$APPLICATIONS_DIR/Karabiner-Elements.app" ] || { echo "  installing karabiner-elements"; brew_install --cask karabiner-elements; }
+say "Apps (Hammerspoon$([ "$WITH_KARABINER" = 1 ] && echo ", Karabiner-Elements"))"
+[ -d "$APPLICATIONS_DIR/Hammerspoon.app" ] || { echo "  installing hammerspoon"; brew_install --cask hammerspoon; }
+if [ "$WITH_KARABINER" = 1 ] && [ ! -d "$APPLICATIONS_DIR/Karabiner-Elements.app" ]; then
+  # This cask installs a system driver, so Homebrew may ask for the password.
+  echo "  installing karabiner-elements"
+  brew_install --cask karabiner-elements
+fi
 echo "  ok"
 
 say "Whisper model (~550 MB)"
@@ -74,23 +98,41 @@ if [ -f "$MODEL" ]; then echo "  already present"; else
   curl -fL --progress-bar "$MODEL_URL" -o "$MODEL"
 fi
 
-say "Hammerspoon config"
-mkdir -p "$HS_DIR"
-fetch "whisper-dictation.lua" "$HS_DIR/whisper-dictation.lua"
-fetch "recorder/WhisperRecorder.swift" "$RECORDER_SRC"
-mkdir -p "$RECORDER_DIR"
+say "Moving an old whisper-dictation install to Hark"
+if [ -f "$HS_DIR/whisper-dictation.lua" ] || [ -f "$AGENT_DIR/$OLD_SERVER_LABEL.plist" ]; then
+  launchctl bootout "gui/$(id -u)/$OLD_SERVER_LABEL" >/dev/null 2>&1 || true
+  rm -f "$AGENT_DIR/$OLD_SERVER_LABEL.plist" \
+        "$HS_DIR/whisper-dictation.lua" "$HS_DIR/WhisperRecorder.swift" \
+        "$HS_DIR/bin/whisper-recorder" "$HS_DIR/whisper-sounds-generate.py" \
+        "$KB_DIR/whisper-dictation.json"
+  rm -rf "$HS_DIR/whisper-sounds"
+  rmdir "$HS_DIR/bin" 2>/dev/null || true
+  if [ -f "$HS_DIR/init.lua" ]; then
+    /usr/bin/sed -i '' 's/require("whisper-dictation")/require("hark")/' "$HS_DIR/init.lua"
+  fi
+  echo "  moved (your sound and island settings carry over)"
+else
+  echo "  nothing to move"
+fi
+
+say "Hark files"
+mkdir -p "$HARK_DIR/bin"
+fetch "hark.lua" "$HARK_DIR/init.lua"
+fetch "recorder/HarkRecorder.swift" "$RECORDER_SRC"
 xcrun swiftc -O \
   -framework AudioToolbox \
   -framework AudioUnit \
   -framework CoreAudio \
   "$RECORDER_SRC" -o "$RECORDER" </dev/null
-fetch "sounds/generate.py" "$HS_DIR/whisper-sounds-generate.py"
-/usr/bin/python3 "$HS_DIR/whisper-sounds-generate.py" "$HS_DIR/whisper-sounds" </dev/null
+fetch "sounds/generate.py" "$HARK_DIR/generate-sounds.py"
+/usr/bin/python3 "$HARK_DIR/generate-sounds.py" "$HARK_DIR/sounds" </dev/null
+fetch "bin/hark" "$HARK_DIR/bin/hark"
+chmod +x "$HARK_DIR/bin/hark"
 touch "$HS_DIR/init.lua"
-if ! grep -q 'require("whisper-dictation")' "$HS_DIR/init.lua"; then
-  printf '\nrequire("whisper-dictation")\n' >> "$HS_DIR/init.lua"
+if ! grep -q 'require("hark")' "$HS_DIR/init.lua"; then
+  printf '\nrequire("hark")\n' >> "$HS_DIR/init.lua"
 fi
-echo "  installed + native recorder and sound library built → $HS_DIR"
+echo "  installed → $HARK_DIR (recorder, sounds, hark CLI)"
 
 install_server_agent() {
 say "Whisper server LaunchAgent (launchd keeps it alive)"
@@ -133,11 +175,13 @@ launchctl bootstrap "gui/$(id -u)" "$AGENT_PLIST"
 echo "  installed + started → $AGENT_PLIST (log: $SERVER_LOG)"
 }
 
-say "Karabiner rule (F5 / dictation key → F18)"
-mkdir -p "$KB_DIR"
-fetch "karabiner/whisper-dictation.json" "$KB_DIR/whisper-dictation.json"
-echo "  rule file installed → $KB_DIR"
-echo "  IMPORTANT: Karabiner does not enable imported rules automatically."
+if [ "$WITH_KARABINER" = 1 ]; then
+  say "Karabiner rule (F5 / dictation key → F18)"
+  mkdir -p "$KB_DIR"
+  fetch "karabiner/hark.json" "$KB_DIR/hark.json"
+  echo "  rule file installed → $KB_DIR"
+  echo "  IMPORTANT: Karabiner does not turn on imported rules by itself."
+fi
 
 say "Restarting Hammerspoon"
 # Restart BEFORE installing the LaunchAgent: an old running config relaunches
@@ -146,25 +190,35 @@ killall Hammerspoon >/dev/null 2>&1 || true
 sleep 1; open -a Hammerspoon
 
 install_server_agent
-open -a Karabiner-Elements >/dev/null 2>&1 || true
+[ "$WITH_KARABINER" = 1 ] && { open -a Karabiner-Elements >/dev/null 2>&1 || true; }
 
+say "Checking the setup"
+# Give Hammerspoon a moment to load Hark and write its first status report.
+"$HARK_DIR/bin/hark" doctor --wait "${HARK_STATUS_WAIT:-20}" $([ "$JSON" = 1 ] && echo --json) >&3 || true
+
+[ "$JSON" = 1 ] && exit 0
 echo
-bold "✅ Files installed — setup is not complete until you click these three things:"
+bold "✅ Files installed. macOS needs these clicks before Hark can work:"
 cat <<'STEPS'
 
-  1. Hammerspoon permissions — System Settings → Privacy & Security:
-       • Microphone    → enable Hammerspoon
-       • Accessibility → enable Hammerspoon
+  1. Hammerspoon permissions. System Settings → Privacy & Security:
+       • Microphone    → turn on Hammerspoon
+       • Accessibility → turn on Hammerspoon
+STEPS
+if [ "$WITH_KARABINER" = 1 ]; then
+cat <<'STEPS'
 
   2. Karabiner-Elements (just opened):
-       • Approve its driver / system extension + grant Input Monitoring when asked
-       • Settings → Complex Modifications → Add rule → enable "F5 / Dictation key → F18"
-       • If F5 asks you to enable Apple's Dictation, this rule is still not enabled
+       • Approve its driver / system extension and Input Monitoring when asked
+       • Settings → Complex Modifications → Add rule → turn on "F5 / Dictation key → F18"
+       • If F5 asks you to turn on Apple's Dictation, this rule is still off
 
   3. (optional) System Settings → Keyboard → Dictation → Off
-       so Apple's cloud dictation never fires on that key.
+       so Apple's dictation does not also start on that key.
+STEPS
+fi
+cat <<'STEPS'
 
-Then click into any text field, press F5, talk, press F5 again — your words appear.
-Quick test: ⌥Space should toggle recording even before the Karabiner rule is enabled.
-No F5 key / skipping Karabiner? ⌥Space works too (needs only step 1).
+Then click into any text field, press F5 (or ⌥Space), talk, and press it again.
+Run ~/.hammerspoon/hark/bin/hark doctor any time to see what is left.
 STEPS

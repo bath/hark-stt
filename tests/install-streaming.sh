@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-TMP="$(mktemp -d "${TMPDIR:-/tmp}/whisper-dictation-test.XXXXXX")"
+TMP="$(mktemp -d "${TMPDIR:-/tmp}/hark-test.XXXXXX")"
 trap 'rm -rf "$TMP"' EXIT
 
 mkdir -p "$TMP/bin" "$TMP/home"
@@ -45,17 +45,20 @@ while [ "$#" -gt 0 ]; do
 done
 
 case "$url" in
-  */whisper-dictation.lua)
-    cp "$REPO_ROOT/whisper-dictation.lua" "$dest"
+  */hark.lua)
+    cp "$REPO_ROOT/hark.lua" "$dest"
     ;;
-  */recorder/WhisperRecorder.swift)
-    cp "$REPO_ROOT/recorder/WhisperRecorder.swift" "$dest"
+  */recorder/HarkRecorder.swift)
+    cp "$REPO_ROOT/recorder/HarkRecorder.swift" "$dest"
+    ;;
+  */bin/hark)
+    cp "$REPO_ROOT/bin/hark" "$dest"
     ;;
   */sounds/generate.py)
     cp "$REPO_ROOT/sounds/generate.py" "$dest"
     ;;
-  */karabiner/whisper-dictation.json)
-    cp "$REPO_ROOT/karabiner/whisper-dictation.json" "$dest"
+  */karabiner/hark.json)
+    cp "$REPO_ROOT/karabiner/hark.json" "$dest"
     ;;
   */ggml-large-v3-turbo-q5_0.bin)
     : >"$dest"
@@ -77,6 +80,13 @@ MOCK
 done
 chmod +x "$TMP/bin/"*
 
+# An old whisper-dictation install that the installer must move to Hark.
+mkdir -p "$TMP/home/.hammerspoon/bin" "$TMP/home/.hammerspoon/whisper-sounds" "$TMP/home/Library/LaunchAgents"
+printf 'require("hs.ipc")\nrequire("whisper-dictation")\n' >"$TMP/home/.hammerspoon/init.lua"
+: >"$TMP/home/.hammerspoon/whisper-dictation.lua"
+: >"$TMP/home/.hammerspoon/bin/whisper-recorder"
+: >"$TMP/home/Library/LaunchAgents/com.whisper-dictation.server.plist"
+
 : >"$TMP/brew.log"
 : >"$TMP/brew-stdin.log"
 
@@ -97,6 +107,7 @@ output="$({ stream_installer; } | env \
   BREW_LOG="$TMP/brew.log" \
   BREW_STDIN_LOG="$TMP/brew-stdin.log" \
   REPO_ROOT="$ROOT" \
+  HARK_STATUS_WAIT=0 \
   bash 2>&1)"
 
 if [ -s "$TMP/brew-stdin.log" ]; then
@@ -118,12 +129,14 @@ done
 
 for artifact in \
   "$TMP/home/.cache/whisper/ggml-large-v3-turbo-q5_0.bin" \
-  "$TMP/home/.hammerspoon/whisper-dictation.lua" \
-  "$TMP/home/.hammerspoon/WhisperRecorder.swift" \
-  "$TMP/home/.hammerspoon/bin/whisper-recorder" \
-  "$TMP/home/.hammerspoon/whisper-sounds/packs.json" \
-  "$TMP/home/.hammerspoon/whisper-sounds/pop/start.wav" \
-  "$TMP/home/.config/karabiner/assets/complex_modifications/whisper-dictation.json"; do
+  "$TMP/home/.hammerspoon/hark/init.lua" \
+  "$TMP/home/.hammerspoon/hark/HarkRecorder.swift" \
+  "$TMP/home/.hammerspoon/hark/bin/hark-recorder" \
+  "$TMP/home/.hammerspoon/hark/bin/hark" \
+  "$TMP/home/.hammerspoon/hark/sounds/packs.json" \
+  "$TMP/home/.hammerspoon/hark/sounds/pop/start.wav" \
+  "$TMP/home/Library/LaunchAgents/com.hark-stt.server.plist" \
+  "$TMP/home/.config/karabiner/assets/complex_modifications/hark.json"; do
   if [ ! -f "$artifact" ]; then
     echo "FAIL: installer did not create $artifact" >&2
     printf '%s\n' "$output" >&2
@@ -131,11 +144,30 @@ for artifact in \
   fi
 done
 
-grep -Fq 'Files installed — setup is not complete until you click these three things:' <<<"$output"
-grep -Fq 'If F5 asks you to enable Apple' <<<"$output"
-grep -Eq '^local MIC[[:space:]]*= nil' "$TMP/home/.hammerspoon/whisper-dictation.lua"
-test -x "$TMP/home/.hammerspoon/bin/whisper-recorder"
-if grep -Fq 'local MIC     = ":0"' "$TMP/home/.hammerspoon/whisper-dictation.lua"; then
+grep -Fq 'Files installed. macOS needs these clicks before Hark can work:' <<<"$output"
+grep -Fq 'If F5 asks you to turn on Apple' <<<"$output"
+grep -Fq 'Hark is ready to dictate' <<<"$output"
+grep -Eq '^local MIC[[:space:]]*= nil' "$TMP/home/.hammerspoon/hark/init.lua"
+test -x "$TMP/home/.hammerspoon/hark/bin/hark-recorder"
+test -x "$TMP/home/.hammerspoon/hark/bin/hark"
+
+# The old install is gone and init.lua loads Hark exactly once.
+for old in \
+  "$TMP/home/.hammerspoon/whisper-dictation.lua" \
+  "$TMP/home/.hammerspoon/bin/whisper-recorder" \
+  "$TMP/home/.hammerspoon/whisper-sounds" \
+  "$TMP/home/Library/LaunchAgents/com.whisper-dictation.server.plist"; do
+  if [ -e "$old" ]; then
+    echo "FAIL: installer left the old install file $old" >&2
+    exit 1
+  fi
+done
+if grep -q 'whisper-dictation' "$TMP/home/.hammerspoon/init.lua" || [ "$(grep -c 'require("hark")' "$TMP/home/.hammerspoon/init.lua")" != 1 ]; then
+  echo "FAIL: init.lua should load Hark once and no longer load whisper-dictation" >&2
+  cat "$TMP/home/.hammerspoon/init.lua" >&2
+  exit 1
+fi
+if grep -Fq 'local MIC     = ":0"' "$TMP/home/.hammerspoon/hark/init.lua"; then
   echo "FAIL: installed config still assumes AVFoundation device 0 is the built-in mic" >&2
   exit 1
 fi

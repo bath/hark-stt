@@ -6,7 +6,7 @@ local scriptPath = debug.getinfo(1, "S").source:sub(2)
 local repoRoot = scriptPath:match("^(.*)/tests/[^/]+$")
 
 -- The island has its own test; keep it out of this one.
-local function freshSettings() return { ["whisperDictation.notchIsland"] = false } end
+local function freshSettings() return { ["hark.notchIsland"] = false } end
 local settings = freshSettings()
 local views = {}
 local recorderCommands = {}
@@ -72,7 +72,7 @@ local fakeHs = {
       local stream = type(streamOrArguments) == "function" and streamOrArguments or nil
       local task = {}
       function task:start()
-        if path:match("/whisper%-recorder$") then
+        if path:match("/hark%-recorder$") then
           stream(task, '{"event":"ready","backend":"AUHAL","microphone_active":false,"sample_rate":48000}\n', "")
         elseif path == "/usr/bin/curl" then
           completion(0, "test transcript", "")
@@ -84,7 +84,7 @@ local fakeHs = {
         if command:match("^START ") then
           stream(task, '{"event":"started","microphone_active":true}\n', "")
         elseif command == "STOP\n" then
-          stream(task, '{"event":"stopped","microphone_active":false,"path":"/tmp/whisper-dictate.wav"}\n', "")
+          stream(task, '{"event":"stopped","microphone_active":false,"path":"/tmp/hark-take.wav"}\n', "")
         end
         return task
       end
@@ -97,7 +97,7 @@ local fakeHs = {
 local fakeIo = { open = function() return nil end }
 local function load()
   local env = setmetatable({ hs = fakeHs, io = fakeIo, os = { getenv = os.getenv } }, { __index = _G })
-  local module = assert(loadfile(repoRoot .. "/whisper-dictation.lua", "t", env))()
+  local module = assert(loadfile(repoRoot .. "/hark.lua", "t", env))()
   assert(module.status() == "ready", "module should become ready")
   return module
 end
@@ -115,7 +115,7 @@ module.toggle()
 assert(views[1].deleted and views[1].scripts[1] == "closeCard()", "the second press should close the card")
 assert(escapeBound == 0, "the Esc hotkey should be released")
 assert(recorderCommands[1] and recorderCommands[1]:match("^START "), "closing with F5 should start recording")
-assert(settings["whisperDictation.onboardingVersion"] == 1, "the card should be marked as seen")
+assert(settings["hark.onboardingVersion"] == 1, "the card should be marked as seen")
 module.toggle()
 assert(module.status() == "ready", "dictation should finish normally")
 
@@ -132,7 +132,7 @@ module = load()
 module.toggle()
 views[#views].content.callback({ body = "close" })
 assert(views[#views].deleted and module.status() == "ready", "Close should not start recording")
-assert(settings["whisperDictation.onboardingVersion"] == 1, "Close should also mark the card as seen")
+assert(settings["hark.onboardingVersion"] == 1, "Close should also mark the card as seen")
 settings = freshSettings()
 module = load()
 module.toggle()

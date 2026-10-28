@@ -205,7 +205,7 @@ private final class ColdRecorder: @unchecked Sendable {
     private var recording = false
     private var deviceWasRunningBeforeCapture = false
     private var recorded: [Int16] = []
-    private var outputPath = "/tmp/whisper-dictate.wav"
+    private var outputPath = "/tmp/hark-take.wav"
     private var levelSquares: Double = 0
     private var levelSamples = 0
     private var levelTimer: DispatchSourceTimer?

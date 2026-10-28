@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Render the whisper-dictation sound library.
+"""Render the Hark sound library.
 
     python3 sounds/generate.py <output-dir>
 
