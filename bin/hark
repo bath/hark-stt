@@ -1,0 +1,259 @@
+#!/usr/bin/python3
+"""hark: check, fix and remove a Hark install.
+
+  hark doctor [--json] [--wait SECONDS]   check every part of the setup
+  hark open-settings PANE                 open the System Settings pane a fix needs
+                                          (accessibility, microphone, input-monitoring,
+                                          karabiner, dictation)
+  hark uninstall --yes                    remove Hark (keeps Homebrew apps and the model)
+  hark version
+
+`hark doctor --json` is made for AI agents: every failed check says whether a
+human must act, what to tell them, and the command that opens the right place.
+Exit code: 0 when every required check passes, 1 otherwise.
+"""
+
+import json
+import os
+import platform
+import shutil
+import subprocess
+import sys
+import time
+import urllib.request
+
+VERSION = "1.0.0"
+HOME = os.path.expanduser("~")
+HS_DIR = os.path.join(HOME, ".hammerspoon")
+HARK_DIR = os.path.join(HS_DIR, "hark")
+STATUS = os.path.join(HARK_DIR, "status.json")
+MODEL = os.path.join(HOME, ".cache/whisper/ggml-large-v3-turbo-q5_0.bin")
+APPS = os.environ.get("APPLICATIONS_DIR", "/Applications")
+SERVER_LABEL = "com.hark-stt.server"
+AGENT_PLIST = os.path.join(HOME, "Library/LaunchAgents", SERVER_LABEL + ".plist")
+KARABINER_JSON = os.path.join(HOME, ".config/karabiner/karabiner.json")
+KARABINER_ASSET = os.path.join(HOME, ".config/karabiner/assets/complex_modifications/hark.json")
+HEALTH_URL = "http://127.0.0.1:8178/health"
+INSTALL = "curl -fsSL https://raw.githubusercontent.com/bath/hark-stt/main/install.sh | bash"
+
+SETTINGS = {
+    "accessibility": "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility",
+    "microphone": "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone",
+    "input-monitoring": "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent",
+    "dictation": "x-apple.systempreferences:com.apple.Keyboard-Settings.extension",
+}
+
+
+def run(*cmd):
+    try:
+        return subprocess.run(cmd, capture_output=True, text=True, timeout=10).returncode == 0
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+
+
+def read_status():
+    try:
+        with open(STATUS) as f:
+            status = json.load(f)
+        status["age"] = time.time() - float(status.get("updated", 0))
+        return status
+    except (OSError, ValueError):
+        return None
+
+
+def server_healthy():
+    try:
+        with urllib.request.urlopen(HEALTH_URL, timeout=2) as response:
+            return response.status == 200
+    except OSError:
+        return False
+
+
+def karabiner_rule_on():
+    """True when the selected Karabiner profile maps F5 to F18."""
+    try:
+        with open(KARABINER_JSON) as f:
+            config = json.load(f)
+    except (OSError, ValueError):
+        return False
+    for profile in config.get("profiles", []):
+        if not profile.get("selected"):
+            continue
+        for rule in profile.get("complex_modifications", {}).get("rules", []):
+            if rule.get("enabled") is False:
+                continue
+            for m in rule.get("manipulators", []):
+                to = m.get("to") or []
+                if m.get("from", {}).get("key_code") == "f5" and any(t.get("key_code") == "f18" for t in to):
+                    return True
+    return False
+
+
+def check(id, title, ok, fix=None, human=False, command=None, required=True):
+    result = {"id": id, "title": title, "ok": bool(ok), "required": required}
+    if not ok:
+        result.update({"fix": fix, "needs_human": human})
+        if command:
+            result["command"] = command
+    return result
+
+
+def doctor_checks():
+    status = read_status()
+    loaded = status is not None and status["age"] < 30
+    hark_cli = os.path.join(HARK_DIR, "bin/hark")
+    reinstall = "Run the installer again."
+    unknown = "Unknown until Hark is loaded. Fix hark_loaded first."
+    checks = [
+        check("macos", "macOS on Apple silicon",
+              sys.platform == "darwin" and platform.machine() == "arm64",
+              "Hark needs a Mac with Apple silicon (the paths assume /opt/homebrew)."),
+        check("homebrew", "Homebrew",
+              shutil.which("brew") or os.path.exists("/opt/homebrew/bin/brew"),
+              "Install Homebrew from https://brew.sh, then run the installer again.", command=None),
+        check("command_line_tools", "Apple Command Line Tools", run("xcrun", "--find", "swiftc"),
+              "Ask the user to run `xcode-select --install` and finish the dialog.", human=True,
+              command="xcode-select --install"),
+        check("whisper_server", "whisper-server (whisper.cpp)",
+              shutil.which("whisper-server") or os.path.exists("/opt/homebrew/bin/whisper-server"),
+              "Run `brew install whisper-cpp`.", command="brew install whisper-cpp"),
+        check("hammerspoon_app", "Hammerspoon app", os.path.isdir(os.path.join(APPS, "Hammerspoon.app")),
+              "Run `brew install --cask hammerspoon`.", command="brew install --cask hammerspoon"),
+        check("model", "Whisper model (~550 MB)",
+              os.path.exists(MODEL) and os.path.getsize(MODEL) > 100_000_000, reinstall, command=INSTALL),
+        check("hark_files", "Hark files in ~/.hammerspoon/hark",
+              all(os.path.exists(os.path.join(HARK_DIR, p)) for p in ("init.lua", "bin/hark-recorder", "sounds/packs.json")),
+              reinstall, command=INSTALL),
+        check("hammerspoon_config", "Hammerspoon loads Hark",
+              os.path.exists(os.path.join(HS_DIR, "init.lua"))
+              and 'require("hark")' in open(os.path.join(HS_DIR, "init.lua")).read(),
+              reinstall, command=INSTALL),
+        check("server_agent", "Whisper server LaunchAgent",
+              run("launchctl", "print", "gui/%d/%s" % (os.getuid(), SERVER_LABEL)), reinstall, command=INSTALL),
+        check("server_health", "Whisper server answers on 127.0.0.1:8178", server_healthy(),
+              "The model takes a few seconds to load after a restart. Wait 10 seconds and check again. "
+              "If it still fails, read /tmp/hark-server.log.",
+              command="launchctl kickstart -k gui/%d/%s" % (os.getuid(), SERVER_LABEL)),
+        check("hammerspoon_running", "Hammerspoon is running", run("pgrep", "-x", "Hammerspoon"),
+              "Start Hammerspoon.", command="open -a Hammerspoon"),
+        check("hark_loaded", "Hark is loaded in Hammerspoon", loaded,
+              "Reload Hammerspoon. If this stays red, open the Hammerspoon Console and read the error.",
+              command="killall Hammerspoon; sleep 1; open -a Hammerspoon"),
+        check("accessibility", "Hammerspoon has Accessibility permission (to paste)",
+              loaded and status.get("accessibility") is True,
+              "Ask the user to turn on Hammerspoon in System Settings → Privacy & Security → Accessibility."
+              if loaded else unknown,
+              human=loaded, command=hark_cli + " open-settings accessibility" if loaded else None),
+        check("microphone", "Hammerspoon has Microphone permission",
+              loaded and status.get("microphone") is True,
+              "Ask the user to turn on Hammerspoon in System Settings → Privacy & Security → Microphone. "
+              "If Hammerspoon is not in the list, press ⌥Space once so macOS asks."
+              if loaded else unknown,
+              human=loaded, command=hark_cli + " open-settings microphone" if loaded else None),
+        check("karabiner_app", "Karabiner-Elements app (only for the F5 key)",
+              os.path.isdir(os.path.join(APPS, "Karabiner-Elements.app")),
+              "Optional. Without it, dictate with ⌥Space. To use F5, run "
+              "`brew install --cask karabiner-elements` (it may ask for the user's password).",
+              command="brew install --cask karabiner-elements", required=False),
+        check("karabiner_rule", "Karabiner rule F5 → F18 is on (only for the F5 key)", karabiner_rule_on(),
+              "Optional. Ask the user to approve Karabiner's driver and Input Monitoring, then open "
+              "Karabiner-Elements → Settings → Complex Modifications → Add rule and turn on "
+              "\"F5 / Dictation key → F18\".",
+              human=True, command=hark_cli + " open-settings karabiner", required=False),
+        check("ready", "Hark is ready to dictate", loaded and status.get("phase") == "ready",
+              "Hark is still warming up (phase: %s). Fix the failed checks above, wait a few seconds, "
+              "and check again." % (status.get("phase") if status else "unknown")),
+    ]
+    return checks, status
+
+
+def doctor(args):
+    as_json = "--json" in args
+    wait = 0.0
+    if "--wait" in args:
+        wait = float(args[args.index("--wait") + 1])
+    deadline = time.time() + wait
+    while True:
+        checks, status = doctor_checks()
+        ready = all(c["ok"] for c in checks if c["required"])
+        if ready or time.time() >= deadline:
+            break
+        time.sleep(1)
+    failed = [c for c in checks if not c["ok"]]
+    report = {
+        "hark": VERSION,
+        "ok": ready,
+        "ready_to_dictate": ready,
+        "hotkeys": ["F5 (needs the Karabiner rule)", "⌥Space"],
+        "checks": checks,
+        "next_step": next((c for c in failed if c["required"]), failed[0] if failed else None),
+        "status": status,
+    }
+    if as_json:
+        print(json.dumps(report, indent=2, ensure_ascii=False))
+    else:
+        for c in checks:
+            mark = "✓" if c["ok"] else ("✗" if c["required"] else "–")
+            print("  %s %s" % (mark, c["title"]))
+            if not c["ok"]:
+                print("      %s" % c["fix"])
+                if c.get("command"):
+                    print("      run: %s" % c["command"])
+        print()
+        print("Ready. Press F5 or ⌥Space in any text field." if ready else "Not ready yet. Fix the ✗ items above.")
+    return 0 if ready else 1
+
+
+def open_settings(args):
+    pane = args[0] if args else ""
+    if pane == "karabiner":
+        return 0 if run("open", "-a", "Karabiner-Elements") else 1
+    if pane not in SETTINGS:
+        print("usage: hark open-settings %s" % "|".join(list(SETTINGS) + ["karabiner"]), file=sys.stderr)
+        return 2
+    return 0 if run("open", SETTINGS[pane]) else 1
+
+
+def uninstall(args):
+    targets = [HARK_DIR, AGENT_PLIST, KARABINER_ASSET]
+    if "--yes" not in args:
+        print("This removes:\n  " + "\n  ".join(targets))
+        print("  and the require(\"hark\") line in ~/.hammerspoon/init.lua")
+        print("It keeps Homebrew apps and the model in ~/.cache/whisper. Run `hark uninstall --yes` to go ahead.")
+        return 2
+    run("launchctl", "bootout", "gui/%d/%s" % (os.getuid(), SERVER_LABEL))
+    for path in targets:
+        if os.path.isdir(path):
+            shutil.rmtree(path, ignore_errors=True)
+        elif os.path.exists(path):
+            os.remove(path)
+    init = os.path.join(HS_DIR, "init.lua")
+    if os.path.exists(init):
+        with open(init) as f:
+            lines = [line for line in f if line.strip() != 'require("hark")']
+        with open(init, "w") as f:
+            f.writelines(lines)
+    if run("pgrep", "-x", "Hammerspoon"):
+        subprocess.run("killall Hammerspoon; sleep 1; open -a Hammerspoon", shell=True)
+    print("Hark is removed. To remove the rest: rm ~/.cache/whisper/ggml-large-v3-turbo-q5_0.bin; "
+          "brew uninstall whisper-cpp; brew uninstall --cask hammerspoon karabiner-elements")
+    return 0
+
+
+def main(argv):
+    command, args = (argv[0], argv[1:]) if argv else ("help", [])
+    if command == "doctor":
+        return doctor(args)
+    if command == "open-settings":
+        return open_settings(args)
+    if command == "uninstall":
+        return uninstall(args)
+    if command == "version":
+        print(VERSION)
+        return 0
+    print(__doc__.strip())
+    return 0 if command in ("help", "-h", "--help") else 2
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

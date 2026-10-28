@@ -48,7 +48,7 @@ fakeHs.task = {
     local task = {}
 
     function task:start()
-      if path:match("/whisper%-recorder$") then
+      if path:match("/hark%-recorder$") then
         recorderStarts = recorderStarts + 1
         recorderArguments = arguments
         stream(task, '{"event":"ready","backend":"AUHAL","microphone_active":false,"sample_rate":48000,"device":"MacBook Pro Microphone"}\n', "")
@@ -66,7 +66,7 @@ fakeHs.task = {
       if command:match("^START ") then
         stream(task, '{"event":"started","command_to_first_buffer_ms":64,"microphone_active":true,"sample_rate":48000}\n', "")
       elseif command == "STOP\n" then
-        stream(task, '{"event":"stopped","command_to_wav_ms":12,"microphone_release_ms":10,"microphone_active":false,"wav_write_ms":1,"samples":96000,"path":"/tmp/whisper-dictate.wav"}\n', "")
+        stream(task, '{"event":"stopped","command_to_wav_ms":12,"microphone_release_ms":10,"microphone_active":false,"wav_write_ms":1,"samples":96000,"path":"/tmp/hark-take.wav"}\n', "")
       end
       return task
     end
@@ -78,7 +78,7 @@ fakeHs.task = {
 
 local fakeOs = { getenv = os.getenv }
 local env = setmetatable({ hs = fakeHs, os = fakeOs }, { __index = _G })
-local module = assert(loadfile(repoRoot .. "/whisper-dictation.lua", "t", env))()
+local module = assert(loadfile(repoRoot .. "/hark.lua", "t", env))()
 
 assert(module.status() == "ready", "recorder and server should prepare during module load")
 assert(module.diagnostics().microphone_active == false, "the microphone must be inactive while ready")
@@ -91,7 +91,7 @@ taskCreationsAtReady = recorderStarts + serverStarts + curlStarts
 module.toggle()
 assert(module.status() == "recording", "first toggle should start recording")
 assert(module.diagnostics().microphone_active == true, "the microphone should activate after F5")
-assert(recorderCommands[1] == "START /tmp/whisper-dictate.wav\n", "start should be an in-process command")
+assert(recorderCommands[1] == "START /tmp/hark-take.wav\n", "start should be an in-process command")
 assert(recorderStarts + serverStarts + curlStarts == taskCreationsAtReady,
   "starting capture must not launch another process")
 

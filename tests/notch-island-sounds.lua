@@ -5,7 +5,7 @@
 
 local scriptPath = debug.getinfo(1, "S").source:sub(2)
 local repoRoot = scriptPath:match("^(.*)/tests/[^/]+$")
-local soundDir = os.getenv("HOME") .. "/.hammerspoon/whisper-sounds"
+local soundDir = os.getenv("HOME") .. "/.hammerspoon/hark/sounds"
 
 local clock = 1000000000
 local played = {}
@@ -102,7 +102,7 @@ local fakeHs = {
       local stream = type(streamOrArguments) == "function" and streamOrArguments or nil
       local task = {}
       function task:start()
-        if path:match("/whisper%-recorder$") then
+        if path:match("/hark%-recorder$") then
           recorderStream = function(line) stream(task, line .. "\n", "") end
           recorderStream('{"event":"ready","backend":"AUHAL","microphone_active":false,"sample_rate":48000}')
         elseif path == "/usr/bin/curl" then
@@ -114,7 +114,7 @@ local fakeHs = {
         if command:match("^START ") then
           recorderStream('{"event":"started","command_to_first_buffer_ms":40,"microphone_active":true}')
         elseif command == "STOP\n" then
-          recorderStream('{"event":"stopped","command_to_wav_ms":10,"microphone_active":false,"path":"/tmp/whisper-dictate.wav"}')
+          recorderStream('{"event":"stopped","command_to_wav_ms":10,"microphone_active":false,"path":"/tmp/hark-take.wav"}')
         end
         return task
       end
@@ -167,7 +167,7 @@ end
 
 local fakeIo = { open = function() return { close = function() end } end }
 local env = setmetatable({ hs = fakeHs, io = fakeIo, os = { getenv = os.getenv } }, { __index = _G })
-local module = assert(loadfile(repoRoot .. "/whisper-dictation.lua", "t", env))()
+local module = assert(loadfile(repoRoot .. "/hark.lua", "t", env))()
 assert(module.status() == "ready", "module should become ready")
 
 -- Start: the start sound plays and the notch grows into the pill.
@@ -230,8 +230,8 @@ advance(1.5)
 mouseScreen = builtIn
 
 -- The menu choices are respected: sounds off, island off.
-settings["whisperDictation.soundPack"] = "off"
-settings["whisperDictation.notchIsland"] = false
+settings["hark.soundPack"] = "off"
+settings["hark.notchIsland"] = false
 local playedBefore, canvasesBefore = #played, #canvases
 transcript = "test transcript"
 module.toggle()

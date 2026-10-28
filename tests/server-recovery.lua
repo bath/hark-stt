@@ -49,8 +49,8 @@ local fakeHs = {
       end
     end)(),
     doAfter = function(_, callback) table.insert(pendingTimers, callback) end,
-    doEvery = function(_, callback)
-      watchdogTick = callback
+    doEvery = function(interval, callback)
+      if interval == 10 then watchdogTick = callback end -- the server watchdog, not other timers
       return { stop = function() end }
     end,
   },
@@ -62,7 +62,7 @@ fakeHs.task = {
     local task = {}
 
     function task:start()
-      if path:match("/whisper%-recorder$") then
+      if path:match("/hark%-recorder$") then
         stream(task, '{"event":"ready","backend":"AUHAL","microphone_active":false,"sample_rate":48000}\n', "")
       elseif path == "/usr/bin/curl" then
         if curlExit == 0 then
@@ -78,7 +78,7 @@ fakeHs.task = {
       if command:match("^START ") then
         stream(task, '{"event":"started","command_to_first_buffer_ms":64,"microphone_active":true}\n', "")
       elseif command == "STOP\n" then
-        stream(task, '{"event":"stopped","command_to_wav_ms":12,"microphone_release_ms":10,"microphone_active":false,"wav_write_ms":1,"samples":96000,"path":"/tmp/whisper-dictate.wav"}\n', "")
+        stream(task, '{"event":"stopped","command_to_wav_ms":12,"microphone_release_ms":10,"microphone_active":false,"wav_write_ms":1,"samples":96000,"path":"/tmp/hark-take.wav"}\n', "")
       end
       return task
     end
@@ -90,7 +90,7 @@ fakeHs.task = {
 
 local fakeOs = { getenv = os.getenv }
 local env = setmetatable({ hs = fakeHs, os = fakeOs }, { __index = _G })
-local module = assert(loadfile(repoRoot .. "/whisper-dictation.lua", "t", env))()
+local module = assert(loadfile(repoRoot .. "/hark.lua", "t", env))()
 
 assert(module.status() == "ready", "healthy launchd server should be adopted at load")
 assert(watchdogTick ~= nil, "a server watchdog timer should be armed")

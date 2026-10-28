@@ -1,23 +1,27 @@
--- whisper-dictation.lua — private, low-latency local dictation for macOS.
+-- Hark: private, low-latency local dictation for macOS.
+-- Installed as ~/.hammerspoon/hark/init.lua and loaded with require("hark").
 --
 -- A persistent native helper prepares a stopped Core Audio HAL input unit, and
 -- a local whisper-server keeps the Whisper model loaded. The microphone remains
 -- inactive until the start hotkey, then releases again before transcription.
 --
--- whisper-server is owned by launchd (LaunchAgent com.whisper-dictation.server,
+-- whisper-server is owned by launchd (LaunchAgent com.hark-stt.server,
 -- installed by install.sh) with KeepAlive, so it restarts on its own if it dies.
 -- This module never launches the server; it polls /health and reconnects.
 
 -- ---- config -----------------------------------------------------------------
+local VERSION        = "1.0.0"
 local HOME           = os.getenv("HOME")
-local RECORDER       = HOME .. "/.hammerspoon/bin/whisper-recorder"
+local HARK_DIR       = HOME .. "/.hammerspoon/hark"
+local RECORDER       = HARK_DIR .. "/bin/hark-recorder"
 local CURL           = "/usr/bin/curl"
 local MIC            = nil -- nil = built-in Mac mic; or an exact name such as ":Studio Display Microphone"
 local LANG           = "en"
-local WAV            = "/tmp/whisper-dictate.wav"
+local WAV            = "/tmp/hark-take.wav"
 local SERVER_HOST    = "127.0.0.1"
 local SERVER_PORT    = 8178
-local SOUND_DIR      = HOME .. "/.hammerspoon/whisper-sounds" -- built by sounds/generate.py
+local SOUND_DIR      = HARK_DIR .. "/sounds" -- built by sounds/generate.py
+local STATUS_FILE    = HARK_DIR .. "/status.json" -- read by `hark doctor`
 local HOTKEYS = {
   { {},       "f18"   },
   { {"alt"},  "space" },
@@ -34,6 +38,7 @@ local recorderOutput = ""
 local recorderRetries = 0
 local serverPollGeneration = 0
 local serverWatchdog = nil
+local statusTimer = nil
 local resetServer -- forward declaration; defined in the server section
 local shuttingDown = false
 local stopRequestedNs = nil
@@ -62,12 +67,23 @@ local function refreshReadyState(showAlert)
   if recorderReady and serverReady and phase == "warming" then
     phase = "ready"
     setIcon("🎙")
-    if showAlert then hs.alert.show("Local Whisper dictation ready") end
+    if showAlert then hs.alert.show("Hark is ready") end
   end
 end
 
 -- ---- settings ---------------------------------------------------------------
-local SETTINGS_PREFIX = "whisperDictation."
+local SETTINGS_PREFIX = "hark."
+
+-- Carry settings over from the whisper-dictation name.
+if hs.settings then
+  for _, key in ipairs({ "soundPack", "soundVolume", "notchIsland" }) do
+    local old = hs.settings.get("whisperDictation." .. key)
+    if old ~= nil and hs.settings.get(SETTINGS_PREFIX .. key) == nil then
+      hs.settings.set(SETTINGS_PREFIX .. key, old)
+    end
+    if old ~= nil then hs.settings.clear("whisperDictation." .. key) end
+  end
+end
 
 local function getSetting(key, default)
   local value = hs.settings and hs.settings.get(SETTINGS_PREFIX .. key)
@@ -691,7 +707,7 @@ kbd { font: 600 12px -apple-system, BlinkMacSystemFont, sans-serif; padding: 1px
   <p class="hint">Pick sounds or turn them off in the 🎙 menu.</p>
 </div>
 <script>
-function post(message) { try { webkit.messageHandlers.whisperDictation.postMessage(message); } catch (e) {} }
+function post(message) { try { webkit.messageHandlers.hark.postMessage(message); } catch (e) {} }
 function closeCard() { document.querySelector(".card").classList.add("out"); }
 document.getElementById("go").addEventListener("click", function () { post("start"); });
 document.getElementById("close").addEventListener("click", function () { post("close"); });
@@ -721,7 +737,7 @@ local function showOnboarding()
   local screen = (hs.mouse and hs.mouse.getCurrentScreen()) or hs.screen.mainScreen()
   local f = screen:frame()
   local w, h = 440, 520
-  local content = hs.webview.usercontent.new("whisperDictation")
+  local content = hs.webview.usercontent.new("hark")
   content:setCallback(function(message)
     if message.body == "start" then closeOnboarding(true)
     elseif message.body == "close" then closeOnboarding(false) end
@@ -809,6 +825,7 @@ hs.shutdownCallback = function()
     recorderTask:setInput("QUIT\n")
   end
   if serverWatchdog then serverWatchdog:stop() end
+  if statusTimer then statusTimer:stop() end
   islandHide()
   if island.canvas then island.canvas:delete() end
   if screenWatcher then screenWatcher:stop() end
@@ -816,10 +833,29 @@ hs.shutdownCallback = function()
   if previousShutdownCallback then previousShutdownCallback() end
 end
 
+-- `hark doctor` reads this file instead of talking to Hammerspoon over IPC.
+-- Test fakes have no accessibilityState, so they never write it.
+local function writeStatus()
+  if not hs.accessibilityState or not hs.json.write then return end
+  hs.json.write({
+    version = VERSION,
+    phase = phase,
+    recorder_ready = recorderReady,
+    server_ready = serverReady,
+    microphone_active = microphoneActive,
+    accessibility = hs.accessibilityState(false),
+    microphone = hs.microphoneState and hs.microphoneState(false) or false,
+    updated = os.time(),
+  }, STATUS_FILE, true, true)
+end
+writeStatus()
+statusTimer = hs.timer.doEvery(5, writeStatus)
+
 startRecorder()
 watchServer()
 
 return {
+  version = VERSION,
   toggle = toggle,
   preview = previewDictation,
   welcome = showOnboarding,
