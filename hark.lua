@@ -10,7 +10,7 @@
 -- This module never launches the server; it polls /health and reconnects.
 
 -- ---- config -----------------------------------------------------------------
-local VERSION        = "1.1.0"
+local VERSION        = "1.2.0"
 local HOME           = os.getenv("HOME")
 local HARK_DIR       = HOME .. "/.hammerspoon/hark"
 local RECORDER       = HARK_DIR .. "/bin/hark-recorder"
@@ -767,6 +767,77 @@ for _, hotkey in ipairs(HOTKEYS) do
   hs.hotkey.bind(hotkey[1], hotkey[2], toggle)
 end
 
+-- ---- updates ------------------------------------------------------------------
+-- "Check for Updates…" is the only thing that goes past 127.0.0.1: it asks
+-- GitHub for the latest release. The update runs `hark update` detached,
+-- because the installer restarts Hammerspoon. The next load says how it went.
+local RELEASES_URL = "https://api.github.com/repos/bath/hark-stt/releases/latest"
+local UPDATE_LOG = "/tmp/hark-update.log"
+local updateState = nil -- nil, "checking" or "updating"
+
+local function isNewer(latest, current)
+  local a, b = {}, {}
+  for n in latest:gmatch("%d+") do table.insert(a, tonumber(n)) end
+  for n in current:gmatch("%d+") do table.insert(b, tonumber(n)) end
+  for i = 1, math.max(#a, #b) do
+    if (a[i] or 0) ~= (b[i] or 0) then return (a[i] or 0) > (b[i] or 0) end
+  end
+  return false
+end
+
+local function updateFailed()
+  updateState = nil
+  setSetting("updateFrom", "")
+  if hs.dialog.blockAlert("The Hark update failed", "The log is in " .. UPDATE_LOG .. ".", "Show Log", "OK") == "Show Log" then
+    hs.execute("open -t '" .. UPDATE_LOG .. "'")
+  end
+end
+
+local function startUpdate(latest)
+  if phase == "recording" or phase == "transcribing" then
+    hs.alert.show("Finish the dictation, then update")
+    return
+  end
+  updateState = "updating"
+  setSetting("updateFrom", VERSION)
+  hs.alert.show("Updating Hark to " .. latest .. ". Hammerspoon restarts when it is done.", 4)
+  hs.task.new("/bin/bash", nil, { "-c",
+    "export PATH=/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin; "
+    .. "(nohup '" .. HARK_DIR .. "/bin/hark' update >'" .. UPDATE_LOG .. "' 2>&1 </dev/null"
+    .. " || open -g hammerspoon://harkUpdateFailed) &" }):start()
+end
+
+local function checkForUpdates()
+  if updateState then return end
+  updateState = "checking"
+  local headers = { ["Accept"] = "application/vnd.github+json", ["User-Agent"] = "Hark/" .. VERSION }
+  hs.http.asyncGet(RELEASES_URL, headers, function(status, body)
+    updateState = nil
+    local ok, release = pcall(hs.json.decode, body or "")
+    local latest = status == 200 and ok and type(release) == "table" and type(release.tag_name) == "string"
+      and (release.tag_name:gsub("^v", "")) or nil
+    if not latest then
+      hs.dialog.blockAlert("Could not check for updates",
+        "GitHub did not answer (HTTP " .. tostring(status) .. "). Try again later.")
+    elseif isNewer(latest, VERSION) then
+      local answer = hs.dialog.blockAlert("Hark " .. latest .. " is available",
+        "You have " .. VERSION .. ". The update takes about a minute, and Hammerspoon restarts at the end.",
+        "Update", "Later")
+      if answer == "Update" then startUpdate(latest) end
+    else
+      hs.dialog.blockAlert("Hark is up to date", "Version " .. VERSION .. " is the latest.")
+    end
+  end)
+end
+
+if hs.urlevent then hs.urlevent.bind("harkUpdateFailed", updateFailed) end
+
+local updatedFrom = getSetting("updateFrom", "")
+if updatedFrom ~= "" then
+  setSetting("updateFrom", "")
+  if updatedFrom ~= VERSION then hs.alert.show("Hark updated to " .. VERSION, 4) end
+end
+
 local function soundMenu()
   local current = getSetting("soundPack", defaultSoundPack)
   local items = {
@@ -810,6 +881,11 @@ if menu then
       { title = "Sound", menu = soundMenu() },
       { title = "Preview animation and sounds", disabled = phase ~= "ready", fn = previewDictation },
       { title = "Show welcome screen", fn = showOnboarding },
+      { title = "-" },
+      { title = "Hark " .. VERSION, disabled = true },
+      { title = updateState == "checking" and "Checking for Updates…"
+          or updateState == "updating" and "Updating…" or "Check for Updates…",
+        disabled = updateState ~= nil, fn = checkForUpdates },
       { title = "-" },
       { title = "Reload Hammerspoon config", fn = function() hs.reload() end },
     }
@@ -859,6 +935,7 @@ return {
   toggle = toggle,
   preview = previewDictation,
   welcome = showOnboarding,
+  checkForUpdates = checkForUpdates,
   status = function() return phase end,
   diagnostics = function()
     return {

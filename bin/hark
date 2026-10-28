@@ -27,7 +27,7 @@ import sys
 import time
 import urllib.request
 
-VERSION = "1.1.0"
+VERSION = "1.2.0"
 HOME = os.path.expanduser("~")
 HS_DIR = os.path.join(HOME, ".hammerspoon")
 HARK_DIR = os.path.join(HS_DIR, "hark")
@@ -138,7 +138,7 @@ def doctor_checks():
               command="xcode-select --install"),
         check("whisper_server", "whisper-server (whisper.cpp)",
               shutil.which("whisper-server") or os.path.exists("/opt/homebrew/bin/whisper-server"),
-              "Run `brew install whisper-cpp`.", command="brew install whisper-cpp"),
+              "Run `brew install whisper.cpp`.", command="brew install whisper.cpp"),
         check("hammerspoon_app", "Hammerspoon app", os.path.isdir(os.path.join(APPS, "Hammerspoon.app")),
               "Run `brew install --cask hammerspoon`.", command="brew install --cask hammerspoon"),
         check("model", "Whisper model (~550 MB)",
@@ -263,7 +263,7 @@ def uninstall(args):
         subprocess.run("killall Hammerspoon; sleep 1; open -a Hammerspoon", shell=True)
     print("Hark is removed. To remove the rest: rm ~/.cache/whisper/ggml-large-v3-turbo-q5_0.bin; "
           + ("brew uninstall hark; " if brew_managed() else "")
-          + "brew uninstall whisper-cpp; brew uninstall --cask hammerspoon karabiner-elements")
+          + "brew uninstall whisper.cpp; brew uninstall --cask hammerspoon karabiner-elements")
     return 0
 
 

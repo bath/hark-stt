@@ -126,6 +126,8 @@ Do this when the user asks you to update or upgrade Hark.
 3. The output ends with the doctor report. Fix what it reports, the same as in step 4 of the install. An update keeps the macOS permissions, so you usually do not have to ask the user for anything.
 4. Tell the user the new version (`hark version`).
 
+From version 1.2.0, the user can also update without you: 🎙 menu → Check for Updates….
+
 If you run `brew upgrade hark` yourself, run `hark setup --json` after it. `brew upgrade` changes only the files in Homebrew. The `hark_current` doctor check fails until `hark setup` copies the new files to `~/.hammerspoon/hark`.
 
 ## Remove Hark
@@ -173,3 +175,9 @@ Rules:
 - A test must never reach the real user session. Mock `launchctl`, `lsof` and anything else that changes system state.
 - Keep `VERSION` in `hark.lua` and `bin/hark` the same. `tests/hark-cli.sh` checks this.
 - Every failed doctor check needs a `fix` an agent can act on, and `needs_human` must be true only when a person has to act.
+
+Release:
+
+1. Set the new `VERSION` in `hark.lua` and `bin/hark`, and merge to `main`.
+2. Tag `vX.Y.Z` on `main` and make a GitHub release from the tag (`gh release create vX.Y.Z --verify-tag`). The 🎙 menu reads `releases/latest`, so a tag without a release is not offered.
+3. In [bath/homebrew-tap](https://github.com/bath/homebrew-tap), set the formula's `url` to the new tag and its `sha256` to the hash of that tarball. Run `brew audit --strict bath/tap/hark`. Copy the formula to `Formula/hark.rb` here.

@@ -76,7 +76,7 @@ fi
 echo "  ok"
 
 say "Command-line tools (whisper-server, Swift compiler)"
-have whisper-server || { echo "  installing whisper-cpp"; brew_install whisper-cpp; }
+have whisper-server || { echo "  installing whisper.cpp"; brew_install whisper.cpp; }
 have xcrun && xcrun --find swiftc >/dev/null 2>&1 || {
   echo "Apple Command Line Tools are required. Run: xcode-select --install"
   exit 1
@@ -165,6 +165,12 @@ PLIST
 # Replace any previous agent, then free the port from orphaned servers left
 # behind by older Hammerspoon-launched setups.
 launchctl bootout "gui/$(id -u)/$SERVER_LABEL" >/dev/null 2>&1 || true
+# bootout returns before launchd has removed the old server, and bootstrap
+# fails with "5: Input/output error" until it has. Wait up to 10 seconds.
+for _ in $(seq 1 50); do
+  launchctl print "gui/$(id -u)/$SERVER_LABEL" >/dev/null 2>&1 || break
+  sleep 0.2
+done
 ORPHANS="$(lsof -ti "tcp:$SERVER_PORT" 2>/dev/null || true)"
 if [ -n "$ORPHANS" ]; then
   echo "  stopping orphaned process(es) on port $SERVER_PORT"

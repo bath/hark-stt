@@ -72,12 +72,34 @@ MOCK
 
 # launchctl and lsof must never reach the real user session: the installer
 # replaces the LaunchAgent and kills whatever holds the server port.
-for command in open killall sleep launchctl lsof; do
+for command in open killall sleep lsof; do
   cat >"$TMP/bin/$command" <<'MOCK'
 #!/usr/bin/env bash
 exit 0
 MOCK
 done
+# Like launchd: bootout returns while the old server is still stopping, and
+# bootstrap fails with error 5 until it has stopped. State is per label.
+cat >"$TMP/bin/launchctl" <<'MOCK'
+#!/usr/bin/env bash
+label="$(basename "${@: -1}" .plist)"
+state="$LAUNCHD_DIR/$label"
+case "$1" in
+  bootout) [ -f "$state" ] || exit 3; echo 3 >"$state" ;;
+  print)
+    [ -f "$state" ] || exit 113
+    left="$(cat "$state")"
+    [ "$left" = loaded ] && exit 0
+    if [ "$left" -le 1 ]; then rm "$state"; else echo $((left - 1)) >"$state"; fi
+    exit 0 ;;
+  bootstrap)
+    if [ -f "$state" ]; then echo "Bootstrap failed: 5: Input/output error" >&2; exit 5; fi
+    echo loaded >"$state" ;;
+esac
+exit 0
+MOCK
+mkdir -p "$TMP/launchd"
+echo loaded >"$TMP/launchd/com.hark-stt.server"
 chmod +x "$TMP/bin/"*
 
 # An old whisper-dictation install that the installer must move to Hark.
@@ -108,6 +130,7 @@ output="$({ stream_installer; } | env \
   BREW_STDIN_LOG="$TMP/brew-stdin.log" \
   REPO_ROOT="$ROOT" \
   HARK_STATUS_WAIT=0 \
+  LAUNCHD_DIR="$TMP/launchd" \
   bash 2>&1)"
 
 if [ -s "$TMP/brew-stdin.log" ]; then
@@ -117,7 +140,7 @@ if [ -s "$TMP/brew-stdin.log" ]; then
 fi
 
 for invocation in \
-  "install whisper-cpp" \
+  "install whisper.cpp" \
   "install --cask hammerspoon" \
   "install --cask karabiner-elements"; do
   if ! grep -Fxq "$invocation" "$TMP/brew.log"; then
@@ -171,4 +194,9 @@ if grep -Fq 'local MIC     = ":0"' "$TMP/home/.hammerspoon/hark/init.lua"; then
   echo "FAIL: installed config still assumes AVFoundation device 0 is the built-in mic" >&2
   exit 1
 fi
-echo "PASS: streamed installer survives child processes reading stdin"
+if [ "$(cat "$TMP/launchd/com.hark-stt.server" 2>/dev/null)" != loaded ]; then
+  echo "FAIL: the server agent is not loaded after replacing a running one" >&2
+  printf '%s\n' "$output" >&2
+  exit 1
+fi
+echo "PASS: streamed installer survives child processes reading stdin and replaces a running server agent"
