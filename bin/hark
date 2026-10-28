@@ -149,7 +149,7 @@ def doctor_checks():
         check("hark_current", "Hark files match this hark (%s)" % VERSION,
               installed_version() in (None, VERSION),
               "The files in ~/.hammerspoon/hark are version %s. Run `hark update`." % installed_version(),
-              command=CLI + " update"),
+              command="hark update" if shutil.which("hark") else CLI + " update"),
         check("hammerspoon_config", "Hammerspoon loads Hark",
               os.path.exists(os.path.join(HS_DIR, "init.lua"))
               and 'require("hark")' in open(os.path.join(HS_DIR, "init.lua")).read(),
