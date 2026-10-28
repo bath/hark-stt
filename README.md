@@ -1,6 +1,7 @@
-<h1 align="center">whisper-dictation</h1>
+<h1 align="center">Hark</h1>
 
 <p align="center">
+  Private dictation for your Mac.<br>
   Press F5, talk, press F5 again. Your words are typed into whatever app you are in.<br>
   Whisper runs on your Mac. No cloud, no account, no telemetry.
 </p>
@@ -9,15 +10,34 @@
   <img alt="macOS on Apple silicon" src="https://img.shields.io/badge/macOS-Apple%20silicon-000000?logo=apple&logoColor=white">
   <img alt="Runs offline" src="https://img.shields.io/badge/runs-offline-2ea44f">
   <img alt="Model: Whisper large-v3-turbo" src="https://img.shields.io/badge/model-Whisper%20large--v3--turbo-6b3fd4">
+  <img alt="Agent-ready install" src="https://img.shields.io/badge/install-agent--ready-ff3b30">
   <img alt="MIT license" src="https://img.shields.io/badge/license-MIT-blue">
 </p>
 
 <p align="center">
-  <img src="docs/notch-island.gif" width="720" alt="The MacBook notch grows into a black pill with a red recording dot, a timer and voice bars, then shows Transcribing with a spinner, then a green check and Pasted">
+  <img src="docs/hark-demo.gif" width="720" alt="Someone presses F5 and talks. The MacBook notch grows into a black pill with a red dot, a timer and voice bars. Then it shows Transcribing, then a green check and Pasted, and the sentence appears in the text field.">
 </p>
 
+<p align="center">
+  <a href="https://bath.github.io/hark-stt/">Website</a> ·
+  <a href="AGENTS.md">AGENTS.md</a> ·
+  <a href="llms.txt">llms.txt</a>
+</p>
+
+## Install
+
+**With your AI agent.** Paste this into Claude Code, Codex, Cursor or another coding agent:
+
+```text
+Install Hark (https://github.com/bath/hark-stt) on this Mac. Read https://raw.githubusercontent.com/bath/hark-stt/main/AGENTS.md and follow it step by step.
+```
+
+The agent runs the installer, then runs `hark doctor --json` until every check passes. When macOS needs you, the agent opens the right System Settings pane and tells you what to turn on.
+
+**Yourself.** You need [Homebrew](https://brew.sh) and the Apple Command Line Tools (`xcode-select --install`).
+
 ```sh
-curl -fsSL https://raw.githubusercontent.com/bath/whisper-dictation/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/bath/hark-stt/main/install.sh | bash
 ```
 
 ## What you get
@@ -29,38 +49,40 @@ curl -fsSL https://raw.githubusercontent.com/bath/whisper-dictation/main/install
 - **Notch Island.** The MacBook notch grows into a black pill while you talk. It shows a red dot, a timer and voice bars that follow your voice. Then it shows "Transcribing", then a green check and "Pasted". On a screen with no notch, the pill drops from the top center. It opens on the screen that has your mouse pointer.
 - **Sounds for each step.** 26 sound packs, each with a sound for start, stop, pasted and error. Pick one, or turn sounds off, in the 🎙 menu.
 - **Your last transcript stays on the clipboard.** If the paste landed in the wrong place, press ⌘V.
+- **A setup check that agents can read.** `hark doctor` checks every part of the install. With `--json`, each failed check says whether a person must act and gives the command that opens the right place.
 
-## Install
-
-You need [Homebrew](https://brew.sh) and the Apple Command Line Tools (`xcode-select --install`).
-
-```sh
-curl -fsSL https://raw.githubusercontent.com/bath/whisper-dictation/main/install.sh | bash
-```
+## Set up
 
 The installer:
 
 1. Installs `whisper-cpp`, [Hammerspoon](https://www.hammerspoon.org) and [Karabiner-Elements](https://karabiner-elements.pqrs.org) with Homebrew.
 2. Downloads the Whisper model (about 550 MB) to `~/.cache/whisper`.
-3. Builds the native recorder helper and the sound library.
+3. Builds the native recorder helper and the sound library into `~/.hammerspoon/hark`.
 4. Starts `whisper-server` as a launchd agent, so it stays up across crashes and reboots.
-5. Copies the Hammerspoon module and the Karabiner rule into place.
+5. Copies the Karabiner rule into place and runs `hark doctor`.
 
-To read the script first, clone the repo and run it locally:
+| Option | What it does |
+|---|---|
+| `--no-karabiner` | Skips Karabiner-Elements. You dictate with ⌥Space instead of F5. |
+| `--json` | Prints only the final `hark doctor --json` report on stdout. Progress goes to stderr. |
 
-```sh
-git clone https://github.com/bath/whisper-dictation
-cd whisper-dictation
-./install.sh
-```
+Pass options after `bash -s --`, for example `curl -fsSL …/install.sh | bash -s -- --no-karabiner`. Running the installer again is safe. It also moves an old `whisper-dictation` install to the Hark names.
 
-### Three clicks macOS does not let a script do
+### What macOS needs from you
 
 1. **System Settings → Privacy & Security.** Turn on Hammerspoon under Microphone and under Accessibility.
 2. **Karabiner-Elements** (the installer opens it). Approve its driver and Input Monitoring. Then go to Settings → Complex Modifications → Add rule, and turn on "F5 / Dictation key → F18". Installing the rule file does not turn it on.
 3. *Optional.* System Settings → Keyboard → Dictation → Off, so Apple's dictation does not also start on that key.
 
-`⌥Space` also toggles dictation. That shortcut needs only step 1, so you can skip Karabiner if you do not use the F5 key. Karabiner is there only because macOS sends the dictation key as a special event that Hammerspoon cannot catch.
+`⌥Space` also toggles dictation. That shortcut needs only step 1. Karabiner is there only because macOS sends the dictation key as a special event that Hammerspoon cannot catch.
+
+### Check the setup
+
+```sh
+~/.hammerspoon/hark/bin/hark doctor          # a list with ✓ and ✗, and the fix for each ✗
+~/.hammerspoon/hark/bin/hark doctor --json   # the same report for scripts and agents
+~/.hammerspoon/hark/bin/hark open-settings accessibility   # or microphone, input-monitoring, karabiner, dictation
+```
 
 ## Use it
 
@@ -117,13 +139,14 @@ The first press after you install or update shows a short welcome card. Press F5
 ```mermaid
 flowchart LR
   F5[F5 key] -->|Karabiner| F18[F18]
-  F18 -->|Hammerspoon hotkey| HS[whisper-dictation.lua]
-  HS -->|START / STOP on stdin| REC[whisper-recorder<br>native Core Audio helper]
+  F18 -->|Hammerspoon hotkey| HS[hark/init.lua]
+  HS -->|START / STOP on stdin| REC[hark-recorder<br>native Core Audio helper]
   REC -->|mic levels, WAV path| HS
   HS -->|POST WAV to 127.0.0.1:8178| SRV[whisper-server<br>launchd agent, model loaded]
   SRV -->|text| HS
   HS -->|clipboard + ⌘V| APP[Your app]
   HS --> UI[Notch Island<br>and sounds]
+  HS -->|status.json| DOC[hark doctor]
 ```
 
 1. When Hammerspoon loads, the native helper prepares a stopped Core Audio input unit, and launchd keeps `whisper-server` running with the model in memory.
@@ -131,11 +154,21 @@ flowchart LR
 3. The second F5 stops the input unit and releases the mic. The helper writes a temporary WAV file.
 4. Hammerspoon sends the WAV to the local server, puts the text on the clipboard, and presses ⌘V.
 
-The Hammerspoon module never starts the server itself. It polls `/health`, reconnects when launchd brings the server back, and shows ⏳ while it waits.
+The Hammerspoon module never starts the server itself. It polls `/health`, reconnects when launchd brings the server back, and shows ⏳ while it waits. Every 5 seconds it writes `~/.hammerspoon/hark/status.json`, which `hark doctor` reads.
+
+### Files
+
+| Installed at | What it is |
+|---|---|
+| `~/.hammerspoon/hark/` | The module (`init.lua`), the recorder, the sounds, the `hark` CLI and `status.json`. |
+| `~/.hammerspoon/init.lua` | One line, `require("hark")`, loads it. |
+| `~/Library/LaunchAgents/com.hark-stt.server.plist` | Keeps `whisper-server` running. Log: `/tmp/hark-server.log`. |
+| `~/.config/karabiner/assets/complex_modifications/hark.json` | The F5 → F18 rule. |
+| `~/.cache/whisper/ggml-large-v3-turbo-q5_0.bin` | The model. |
 
 ## Customize
 
-Edit the config block at the top of `~/.hammerspoon/whisper-dictation.lua`, then reload Hammerspoon from the 🎙 menu.
+Edit the config block at the top of `~/.hammerspoon/hark/init.lua`, then reload Hammerspoon from the 🎙 menu.
 
 | Setting | Default | Notes |
 |---|---|---|
@@ -143,7 +176,7 @@ Edit the config block at the top of `~/.hammerspoon/whisper-dictation.lua`, then
 | `LANG` | `"en"` | Or `"auto"`. |
 | `HOTKEYS` | `{{}, "f18"}`, `{{"alt"}, "space"}` | Add or replace toggle hotkeys. |
 
-To change the Whisper model or other server flags, edit `~/Library/LaunchAgents/com.whisper-dictation.server.plist` and restart the agent with `launchctl kickstart -k gui/$(id -u)/com.whisper-dictation.server`. Or run `install.sh` again.
+To change the Whisper model or other server flags, edit `~/Library/LaunchAgents/com.hark-stt.server.plist` and restart the agent with `launchctl kickstart -k gui/$(id -u)/com.hark-stt.server`. Or run `install.sh` again.
 
 ## FAQ
 
@@ -155,15 +188,20 @@ To change the Whisper model or other server flags, edit `~/Library/LaunchAgents/
 
 **Will the start sound end up in my transcript?** The start sound plays while the mic opens, so the mic can hear it. The start sounds are short (Pop is 140 ms) for this reason. If you see it in your text, pick a quieter pack or turn sounds off.
 
+**Can my agent install it without me?** Almost. macOS requires a person to grant Microphone and Accessibility permission, and to approve Karabiner's driver. The agent opens each pane and tells you what to turn on. Everything else is automatic.
+
 **Intel Mac?** The paths assume Apple-silicon Homebrew (`/opt/homebrew`). On Intel, change them to `/usr/local`.
 
+**Why the name?** "Hark" is an old word for "listen". The repo is `hark-stt` because Hark is speech-to-text.
+
 ## Troubleshooting
+
+Run `~/.hammerspoon/hark/bin/hark doctor` first. It names the part that is broken and how to fix it.
 
 - **F5 asks whether you want to turn on Apple's Dictation.** The Karabiner rule is installed but not turned on. In Karabiner-Elements, open Complex Modifications → Add rule and turn on "F5 / Dictation key → F18".
 - **F5 does nothing.** Try `⌥Space`. If that works, check the Karabiner rule and its Input Monitoring permission. If it does not, turn on Hammerspoon under Microphone and Accessibility, then reload its config from the menu-bar icon.
 - **The first F5 press shows a Microphone prompt.** Approve it, wait for 🎙, then press F5 again. macOS can wait to show this prompt until the helper first starts the input hardware.
-- **How to check the hotkey.** The menu-bar icon changes from 🎙 to 🔴 while you record.
-- **The menu stays at ⏳.** The recorder or the Whisper server did not start. Recorder errors are in the Hammerspoon Console, and server errors are in `/tmp/whisper-server.log`. launchd restarts the server, and dictation reconnects without a reload.
+- **The menu stays at ⏳.** The recorder or the Whisper server did not start. Recorder errors are in the Hammerspoon Console, and server errors are in `/tmp/hark-server.log`. launchd restarts the server, and dictation reconnects without a reload.
 - **No sounds.** Check the volume in the Sound menu. If the menu says "No sounds installed", run `install.sh` again.
 
 ## Limits
@@ -176,34 +214,29 @@ To change the Whisper model or other server flags, edit `~/Library/LaunchAgents/
 
 ## Development
 
-The tests run inside Hammerspoon with a fake `hs` object, so they do not touch your live setup. Run each one from the Hammerspoon Console:
-
-```lua
-dofile("/path/to/whisper-dictation/tests/cold-microphone-hot-path.lua")
-dofile("/path/to/whisper-dictation/tests/server-recovery.lua")
-dofile("/path/to/whisper-dictation/tests/notch-island-sounds.lua")
-dofile("/path/to/whisper-dictation/tests/onboarding.lua")
-```
-
-The installer test runs in a shell with mocked Homebrew, curl and launchctl:
+See [AGENTS.md](AGENTS.md) for the repo layout and rules. The shell tests:
 
 ```sh
-bash tests/install-streaming.sh
+bash tests/install-streaming.sh   # installer, with Homebrew, curl and launchctl mocked
+bash tests/hark-cli.sh            # doctor report, uninstall safety
+```
+
+The Lua tests run inside Hammerspoon with a fake `hs` object, so they do not touch your live setup. Run each one from the Hammerspoon Console, or with `hs -c "dofile('…')"`:
+
+```lua
+dofile("/path/to/hark-stt/tests/cold-microphone-hot-path.lua")
+dofile("/path/to/hark-stt/tests/server-recovery.lua")
+dofile("/path/to/hark-stt/tests/notch-island-sounds.lua")
+dofile("/path/to/hark-stt/tests/onboarding.lua")
 ```
 
 ## Uninstall
 
 ```sh
-launchctl bootout gui/$(id -u)/com.whisper-dictation.server
-rm ~/Library/LaunchAgents/com.whisper-dictation.server.plist
-rm ~/.hammerspoon/whisper-dictation.lua
-rm ~/.hammerspoon/WhisperRecorder.swift
-rm ~/.hammerspoon/bin/whisper-recorder
-rm -r ~/.hammerspoon/whisper-sounds ~/.hammerspoon/whisper-sounds-generate.py
-rm ~/.config/karabiner/assets/complex_modifications/whisper-dictation.json
-# Remove the require("whisper-dictation") line from ~/.hammerspoon/init.lua.
-# Turn off the rule in Karabiner. Run `brew uninstall --cask hammerspoon karabiner-elements` if nothing else uses them.
+~/.hammerspoon/hark/bin/hark uninstall --yes
 ```
+
+This removes `~/.hammerspoon/hark`, the LaunchAgent, the Karabiner rule file and the `require("hark")` line. It keeps the Homebrew apps and the model, and prints the commands to remove those too.
 
 ## License
 

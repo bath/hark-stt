@@ -33,4 +33,5 @@ HOME="$TMP/home" "$ROOT/bin/hark" open-settings nowhere 2>/dev/null && { echo "F
   echo "FAIL: bin/hark and hark.lua must report the same version" >&2
   exit 1
 }
+cmp -s "$ROOT/llms.txt" "$ROOT/docs/llms.txt" || { echo "FAIL: docs/llms.txt (website) must match llms.txt" >&2; exit 1; }
 echo "PASS: hark doctor reports a next step and uninstall needs --yes"

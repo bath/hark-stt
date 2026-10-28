@@ -1,0 +1,31 @@
+# Hark
+
+> Hark is private, on-device dictation for macOS on Apple silicon. Press F5 (or ⌥Space), talk, press it again, and the text is pasted where the cursor is, in any app. Whisper large-v3-turbo runs locally through whisper.cpp. No cloud, no account, no telemetry. MIT license. Repo: https://github.com/bath/hark-stt
+
+To install Hark for a user, an agent runs the installer with `--json`, then repeats `~/.hammerspoon/hark/bin/hark doctor --json` and follows `next_step` until `ok` is true. When `next_step.needs_human` is true, the agent runs `next_step.command` to open the right System Settings pane and tells the user `next_step.fix`.
+
+- Install: `curl -fsSL https://raw.githubusercontent.com/bath/hark-stt/main/install.sh | bash -s -- --json` (add `--no-karabiner` to use ⌥Space only)
+- Check: `~/.hammerspoon/hark/bin/hark doctor --json`
+- Open a settings pane: `~/.hammerspoon/hark/bin/hark open-settings accessibility|microphone|input-monitoring|karabiner|dictation`
+- Remove: `~/.hammerspoon/hark/bin/hark uninstall --yes`
+
+## Docs
+
+- [AGENTS.md](https://raw.githubusercontent.com/bath/hark-stt/main/AGENTS.md): step-by-step install for AI agents, the doctor report format, and how to work on the repo
+- [README](https://raw.githubusercontent.com/bath/hark-stt/main/README.md): features, the menu, sound packs, how it works, FAQ, troubleshooting
+- [install.sh](https://raw.githubusercontent.com/bath/hark-stt/main/install.sh): the installer
+- [bin/hark](https://raw.githubusercontent.com/bath/hark-stt/main/bin/hark): the doctor, open-settings and uninstall CLI
+
+## Facts
+
+- Requirements: macOS on Apple silicon, Homebrew, Apple Command Line Tools. The installer adds whisper-cpp, Hammerspoon and (unless `--no-karabiner`) Karabiner-Elements.
+- Human steps macOS requires: Hammerspoon under Privacy & Security → Microphone and → Accessibility; for F5, Karabiner's driver, Input Monitoring and the rule "F5 / Dictation key → F18".
+- Network: only 127.0.0.1 at run time. The installer downloads the ~550 MB model once from Hugging Face.
+- The mic is off until the hotkey and is released when recording stops.
+- Text arrives after the user stops talking, in one paste. The last transcript stays on the clipboard.
+- Notch Island: the MacBook notch shows recording, "Transcribing" and "Pasted". 26 sound packs mark each step.
+
+## Optional
+
+- [Website](https://bath.github.io/hark-stt/)
+- [Uninstall and customize](https://github.com/bath/hark-stt#customize)

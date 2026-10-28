@@ -194,9 +194,15 @@ install_server_agent
 
 say "Checking the setup"
 # Give Hammerspoon a moment to load Hark and write its first status report.
-"$HARK_DIR/bin/hark" doctor --wait "${HARK_STATUS_WAIT:-20}" $([ "$JSON" = 1 ] && echo --json) >&3 || true
+READY=1
+"$HARK_DIR/bin/hark" doctor --wait "${HARK_STATUS_WAIT:-20}" $([ "$JSON" = 1 ] && echo --json) >&3 || READY=0
 
 [ "$JSON" = 1 ] && exit 0
+if [ "$READY" = 1 ]; then
+  echo
+  bold "✅ Hark is ready. Click into any text field, press F5 (or ⌥Space), talk, and press it again."
+  exit 0
+fi
 echo
 bold "✅ Files installed. macOS needs these clicks before Hark can work:"
 cat <<'STEPS'
