@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <rect width="32" height="32" rx="7" fill="#101318"/>
+  <path d="M5 6h22v6a6 6 0 0 1-6 6H11a6 6 0 0 1-6-6z" fill="#000"/>
+  <circle cx="11" cy="12" r="2.4" fill="#ff4a3d"/>
+  <g fill="#ff6b5f">
+    <rect x="16" y="10" width="1.8" height="4" rx=".9"/>
+    <rect x="19" y="8.5" width="1.8" height="7" rx=".9"/>
+    <rect x="22" y="10.5" width="1.8" height="3" rx=".9"/>
+  </g>
+  <text x="16" y="28" text-anchor="middle" font-family="-apple-system, Helvetica, Arial, sans-serif" font-weight="800" font-size="9" fill="#eceff2">HARK</text>
+</svg>
