@@ -32,6 +32,13 @@ Ask the user: "Do you want to start dictation with the F5 key, or is ⌥Space en
 curl -fsSL https://hark.works/install.sh | bash -s -- --json
 ```
 
+Or, if the user wants Homebrew to manage Hark:
+
+```sh
+brew install bath/tap/hark
+hark setup --json             # add --no-karabiner for ⌥Space only
+```
+
 With `--no-karabiner` for ⌥Space only:
 
 ```sh
@@ -102,14 +109,33 @@ When `ok` is `true`, tell the user:
 - Do not edit the macOS privacy database (TCC), turn off SIP, or use `sudo` for Hark. The user grants permissions in System Settings.
 - Do not change `~/.hammerspoon/init.lua` beyond the `require("hark")` line the installer adds. The user may have their own config in it.
 
-### Remove Hark
+## Update Hark
+
+Do this when the user asks you to update or upgrade Hark.
+
+1. Find the `hark` CLI. Use `hark` if `command -v hark` finds it (a Homebrew install). If not, use `~/.hammerspoon/hark/bin/hark`. If neither exists, Hark is not installed. Follow "Install Hark for a user".
+2. Run:
+
+   ```sh
+   hark update --json
+   ```
+
+   - For a Homebrew install, this runs `brew upgrade hark` and then `hark setup`. For a curl install, it runs the latest installer from hark.works.
+   - It keeps the user's choice of F5 or ⌥Space.
+   - If the output says `update` is an unknown command, the install is 1.0.0. Run the installer again (step 3 of the install) to update it. If `~/.config/karabiner/assets/complex_modifications/hark.json` does not exist, add `--no-karabiner`.
+3. The output ends with the doctor report. Fix what it reports, the same as in step 4 of the install. An update keeps the macOS permissions, so you usually do not have to ask the user for anything.
+4. Tell the user the new version (`hark version`).
+
+If you run `brew upgrade hark` yourself, run `hark setup --json` after it. `brew upgrade` changes only the files in Homebrew. The `hark_current` doctor check fails until `hark setup` copies the new files to `~/.hammerspoon/hark`.
+
+## Remove Hark
 
 ```sh
 ~/.hammerspoon/hark/bin/hark uninstall          # shows what it removes
 ~/.hammerspoon/hark/bin/hark uninstall --yes    # removes it
 ```
 
-This keeps the Homebrew apps and the model. The command prints how to remove those too.
+This keeps the Homebrew apps and the model. The command prints how to remove those too. For a Homebrew install, also run `brew uninstall hark`.
 
 ## Work on this repo
 
@@ -117,7 +143,8 @@ This keeps the Homebrew apps and the model. The command prints how to remove tho
 |---|---|
 | `hark.lua` | The Hammerspoon module. Installed as `~/.hammerspoon/hark/init.lua`. |
 | `recorder/HarkRecorder.swift` | Native Core Audio helper. Talks JSON lines over stdin and stdout. |
-| `bin/hark` | The CLI: `doctor`, `open-settings`, `uninstall`, `version`. Python standard library only. |
+| `bin/hark` | The CLI: `doctor`, `update`, `setup`, `open-settings`, `uninstall`, `version`. Python standard library only. |
+| `Formula/hark.rb` | A copy of the Homebrew formula in [bath/homebrew-tap](https://github.com/bath/homebrew-tap). The tap has the live one. |
 | `sounds/generate.py` | Renders the sound packs at install time. Python standard library only. |
 | `install.sh` | The installer. Must keep working when piped from curl. |
 | `karabiner/hark.json` | The F5 → F18 rule. |

@@ -40,6 +40,15 @@ The agent runs the installer, then runs `hark doctor --json` until every check p
 curl -fsSL https://hark.works/install.sh | bash
 ```
 
+**With Homebrew.** This puts `hark` on your PATH, and `brew upgrade` finds new releases.
+
+```sh
+brew install bath/tap/hark
+hark setup
+```
+
+`brew install` cannot write to your home folder, so `hark setup` runs the installer from the formula.
+
 ## What you get
 
 - **Dictation in any text field.** Mail, Slack, your editor, a browser form. The text is pasted where your cursor is.
@@ -230,13 +239,23 @@ dofile("/path/to/hark-stt/tests/notch-island-sounds.lua")
 dofile("/path/to/hark-stt/tests/onboarding.lua")
 ```
 
+## Update
+
+```sh
+~/.hammerspoon/hark/bin/hark update   # or `hark update` if you installed with Homebrew
+```
+
+For a Homebrew install, `hark update` runs `brew upgrade hark` and then `hark setup`. For a curl install, it runs the latest installer from hark.works. It keeps your choice of F5 or ⌥Space. If you run only `brew upgrade hark`, run `hark setup` after it. Until you do, `hark doctor` shows the `hark_current` check as failed.
+
+Hark 1.0.0 has no `update` command. To update from 1.0.0, run the installer again.
+
 ## Uninstall
 
 ```sh
 ~/.hammerspoon/hark/bin/hark uninstall --yes
 ```
 
-This removes `~/.hammerspoon/hark`, the LaunchAgent, the Karabiner rule file and the `require("hark")` line. It keeps the Homebrew apps and the model, and prints the commands to remove those too.
+This removes `~/.hammerspoon/hark`, the LaunchAgent, the Karabiner rule file and the `require("hark")` line. It keeps the Homebrew apps and the model, and prints the commands to remove those too. For a Homebrew install, also run `brew uninstall hark`.
 
 ## License
 

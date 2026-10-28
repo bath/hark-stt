@@ -10,7 +10,7 @@
 -- This module never launches the server; it polls /health and reconnects.
 
 -- ---- config -----------------------------------------------------------------
-local VERSION        = "1.0.0"
+local VERSION        = "1.1.0"
 local HOME           = os.getenv("HOME")
 local HARK_DIR       = HOME .. "/.hammerspoon/hark"
 local RECORDER       = HARK_DIR .. "/bin/hark-recorder"
