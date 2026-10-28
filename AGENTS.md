@@ -29,15 +29,16 @@ Ask the user: "Do you want to start dictation with the F5 key, or is ⌥Space en
 ### 3. Run the installer
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/bath/hark-stt/main/install.sh | bash -s -- --json
+curl -fsSL https://hark.works/install.sh | bash -s -- --json
 ```
 
 With `--no-karabiner` for ⌥Space only:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/bath/hark-stt/main/install.sh | bash -s -- --json --no-karabiner
+curl -fsSL https://hark.works/install.sh | bash -s -- --json --no-karabiner
 ```
 
+- If `hark.works` does not answer, use the same file from GitHub: `https://raw.githubusercontent.com/bath/hark-stt/main/install.sh`.
 - It takes a few minutes the first time. Most of the time is the 550 MB model download.
 - With `--json`, progress goes to stderr and stdout carries only the doctor report (see step 4).
 - If your shell cannot answer a password prompt and the Karabiner step stops, ask the user to run `brew install --cask karabiner-elements` in their own terminal, then run the installer again.

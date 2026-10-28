@@ -33,5 +33,8 @@ HOME="$TMP/home" "$ROOT/bin/hark" open-settings nowhere 2>/dev/null && { echo "F
   echo "FAIL: bin/hark and hark.lua must report the same version" >&2
   exit 1
 }
-cmp -s "$ROOT/llms.txt" "$ROOT/docs/llms.txt" || { echo "FAIL: docs/llms.txt (website) must match llms.txt" >&2; exit 1; }
+# hark.works serves docs/, so these copies must match the repo files.
+for file in llms.txt install.sh AGENTS.md; do
+  cmp -s "$ROOT/$file" "$ROOT/docs/$file" || { echo "FAIL: docs/$file (served at hark.works/$file) must match $file; run cp $file docs/" >&2; exit 1; }
+done
 echo "PASS: hark doctor reports a next step and uninstall needs --yes"

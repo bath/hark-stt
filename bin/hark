@@ -34,7 +34,7 @@ AGENT_PLIST = os.path.join(HOME, "Library/LaunchAgents", SERVER_LABEL + ".plist"
 KARABINER_JSON = os.path.join(HOME, ".config/karabiner/karabiner.json")
 KARABINER_ASSET = os.path.join(HOME, ".config/karabiner/assets/complex_modifications/hark.json")
 HEALTH_URL = "http://127.0.0.1:8178/health"
-INSTALL = "curl -fsSL https://raw.githubusercontent.com/bath/hark-stt/main/install.sh | bash"
+INSTALL = "curl -fsSL https://hark.works/install.sh | bash"
 
 SETTINGS = {
     "accessibility": "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility",

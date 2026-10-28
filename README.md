@@ -19,7 +19,7 @@
 </p>
 
 <p align="center">
-  <a href="https://bath.github.io/hark-stt/">Website</a> ·
+  <a href="https://hark.works/">Website</a> ·
   <a href="AGENTS.md">AGENTS.md</a> ·
   <a href="llms.txt">llms.txt</a>
 </p>
@@ -29,7 +29,7 @@
 **With your AI agent.** Paste this into Claude Code, Codex, Cursor or another coding agent:
 
 ```text
-Install Hark (https://github.com/bath/hark-stt) on this Mac. Read https://raw.githubusercontent.com/bath/hark-stt/main/AGENTS.md and follow it step by step.
+Install Hark (https://hark.works) on this Mac. Read https://hark.works/AGENTS.md and follow it step by step.
 ```
 
 The agent runs the installer, then runs `hark doctor --json` until every check passes. When macOS needs you, the agent opens the right System Settings pane and tells you what to turn on.
@@ -37,7 +37,7 @@ The agent runs the installer, then runs `hark doctor --json` until every check p
 **Yourself.** You need [Homebrew](https://brew.sh) and the Apple Command Line Tools (`xcode-select --install`).
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/bath/hark-stt/main/install.sh | bash
+curl -fsSL https://hark.works/install.sh | bash
 ```
 
 ## What you get

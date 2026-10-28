@@ -4,16 +4,16 @@
 
 To install Hark for a user, an agent runs the installer with `--json`, then repeats `~/.hammerspoon/hark/bin/hark doctor --json` and follows `next_step` until `ok` is true. When `next_step.needs_human` is true, the agent runs `next_step.command` to open the right System Settings pane and tells the user `next_step.fix`.
 
-- Install: `curl -fsSL https://raw.githubusercontent.com/bath/hark-stt/main/install.sh | bash -s -- --json` (add `--no-karabiner` to use ⌥Space only)
+- Install: `curl -fsSL https://hark.works/install.sh | bash -s -- --json` (add `--no-karabiner` to use ⌥Space only)
 - Check: `~/.hammerspoon/hark/bin/hark doctor --json`
 - Open a settings pane: `~/.hammerspoon/hark/bin/hark open-settings accessibility|microphone|input-monitoring|karabiner|dictation`
 - Remove: `~/.hammerspoon/hark/bin/hark uninstall --yes`
 
 ## Docs
 
-- [AGENTS.md](https://raw.githubusercontent.com/bath/hark-stt/main/AGENTS.md): step-by-step install for AI agents, the doctor report format, and how to work on the repo
+- [AGENTS.md](https://hark.works/AGENTS.md): step-by-step install for AI agents, the doctor report format, and how to work on the repo
 - [README](https://raw.githubusercontent.com/bath/hark-stt/main/README.md): features, the menu, sound packs, how it works, FAQ, troubleshooting
-- [install.sh](https://raw.githubusercontent.com/bath/hark-stt/main/install.sh): the installer
+- [install.sh](https://hark.works/install.sh): the installer
 - [bin/hark](https://raw.githubusercontent.com/bath/hark-stt/main/bin/hark): the doctor, open-settings and uninstall CLI
 
 ## Facts
@@ -27,5 +27,5 @@ To install Hark for a user, an agent runs the installer with `--json`, then repe
 
 ## Optional
 
-- [Website](https://bath.github.io/hark-stt/)
+- [Website](https://hark.works/)
 - [Uninstall and customize](https://github.com/bath/hark-stt#customize)
