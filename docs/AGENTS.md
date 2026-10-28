@@ -175,3 +175,9 @@ Rules:
 - A test must never reach the real user session. Mock `launchctl`, `lsof` and anything else that changes system state.
 - Keep `VERSION` in `hark.lua` and `bin/hark` the same. `tests/hark-cli.sh` checks this.
 - Every failed doctor check needs a `fix` an agent can act on, and `needs_human` must be true only when a person has to act.
+
+Release:
+
+1. Set the new `VERSION` in `hark.lua` and `bin/hark`, and merge to `main`.
+2. Tag `vX.Y.Z` on `main` and make a GitHub release from the tag (`gh release create vX.Y.Z --verify-tag`). The 🎙 menu reads `releases/latest`, so a tag without a release is not offered.
+3. In [bath/homebrew-tap](https://github.com/bath/homebrew-tap), set the formula's `url` to the new tag and its `sha256` to the hash of that tarball. Run `brew audit --strict bath/tap/hark`. Copy the formula to `Formula/hark.rb` here.
