@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Page not found · Hark</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="/hark-stt/favicon.svg" type="image/svg+xml">
+<meta name="color-scheme" content="light dark">
+<style>
+:root { --paper: #eceff2; --ink: #101318; --ink-2: #3f4751; --rec: #d63c30; --focus: #101318; }
+@media (prefers-color-scheme: dark) {
+  :root { --paper: #0c0e11; --ink: #e7eaee; --ink-2: #a4adb8; --rec: #ff5b4f; --focus: #e7eaee; }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; min-height: 100vh; background: var(--paper); color: var(--ink);
+  font: 17px/1.55 -apple-system, BlinkMacSystemFont, ui-sans-serif, "Helvetica Neue", Arial, sans-serif;
+  display: grid; place-items: start; padding: 0 clamp(16px, 4vw, 48px);
+}
+.pill {
+  margin: 0 auto; height: 40px; width: 230px; max-width: 100%; border-radius: 0 0 22px 22px; background: #000; color: #f4f5f7;
+  display: flex; align-items: center; justify-content: center; gap: 9px; font: 600 13px/1 -apple-system, sans-serif;
+}
+.pill i { width: 8px; height: 8px; border-radius: 50%; background: #ff4a3d; }
+main { max-width: 40rem; padding: 18vh 0 48px; }
+h1 { font-size: clamp(2rem, 6vw, 3.2rem); line-height: 1.05; letter-spacing: -0.03em; margin: 0; }
+p { color: var(--ink-2); margin: 16px 0 0; }
+a { color: var(--ink); text-underline-offset: 3px; }
+a:hover { text-decoration-color: var(--rec); }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+</style>
+</head>
+<body>
+<div class="pill" aria-hidden="true"><i></i>Nothing heard here</div>
+<main>
+  <h1>This page does not exist.</h1>
+  <p>Go to the <a href="/">Hark home page</a>, or read the code on <a href="https://github.com/bath/hark-stt">GitHub</a>.</p>
+</main>
+</body>
+</html>
