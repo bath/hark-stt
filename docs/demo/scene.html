@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Hark demo scene</title>
+<!--
+  Demo scene for Hark. Everything is driven by window.seek(t) (seconds), so a
+  frame at time t always looks the same. render.mjs steps through the loop and
+  captures each frame. Open this file in a browser to preview: it plays itself
+  unless the URL has ?still.
+  Units: the stage is 872.7 x 458.2 "points"; it is scaled by 1.1 to 960 x 504 CSS px
+  (1.905:1, the og:image shape).
+  The island geometry and drawing follow islandDraw() in whisper-dictation.lua.
+-->
+<style>
+  :root {
+    --s: 1.1;              /* CSS px per point */
+    --red: #ff453a;
+    --green: #30d158;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 960px; height: 504px; overflow: hidden; background: #e9e5df; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+         -webkit-font-smoothing: antialiased; }
+
+  #stage { position: absolute; left: 0; top: 0; width: 872.73px; height: 458.18px;
+           transform: scale(var(--s)); transform-origin: 0 0; overflow: hidden;
+           background:
+             radial-gradient(120% 90% at 50% 0%, #f4f1ec 0%, #e7e2da 60%, #dcd6cd 100%); }
+
+  /* ---- device ---------------------------------------------------------- */
+  #lid { position: absolute; left: 26px; right: 26px; top: 22px; bottom: -40px;
+         border-radius: 24px 24px 0 0; background: #000;
+         box-shadow: 0 0 0 1px #2a2a2c, 0 0 0 2.4px #b4b3b8, 0 -0.5px 0 3px #e4e3e7, 0 30px 70px rgba(60,45,30,.28), 0 8px 24px rgba(60,45,30,.18); }
+  #screen { position: absolute; left: 11px; right: 11px; top: 11px; bottom: 0; overflow: hidden;
+            border-radius: 10px 10px 0 0; background: #24423f; }
+
+  /* wallpaper: deep spruce at the top, warm clay and sand below */
+  #wall { position: absolute; inset: 0;
+          background:
+            radial-gradient(70% 60% at 12% 105%, rgba(240,190,140,.95) 0%, rgba(240,190,140,0) 70%),
+            radial-gradient(60% 70% at 92% 100%, rgba(214,120,88,.9) 0%, rgba(214,120,88,0) 70%),
+            radial-gradient(80% 60% at 78% 10%, rgba(64,112,104,.9) 0%, rgba(64,112,104,0) 70%),
+            linear-gradient(176deg, #13302d 0%, #23504a 34%, #6f7a5e 62%, #c99470 86%, #e2b48a 100%); }
+  #wall svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+  /* ---- menu bar ---------------------------------------------------------- */
+  #menubar { position: absolute; left: 0; right: 0; top: 0; height: 38px;
+             background: rgba(255,255,255,.10); backdrop-filter: blur(24px) saturate(160%);
+             -webkit-backdrop-filter: blur(24px) saturate(160%);
+             color: rgba(255,255,255,.96); font-size: 13px; letter-spacing: -0.08px;
+             text-shadow: 0 0 1px rgba(0,0,0,.08); }
+  #menubar .menus { position: absolute; left: 20px; top: 0; height: 38px; display: flex; align-items: center; gap: 18px; }
+  #menubar .menus b { font-weight: 700; }
+  #menubar .status { position: absolute; right: 16px; top: 0; height: 38px; display: flex; align-items: center; gap: 15px; }
+  #menubar .status svg { display: block; }
+  #mic-item { width: 16px; height: 18px; position: relative; font-size: 12.5px; line-height: 18px; text-align: center;
+              font-family: "Apple Color Emoji"; text-shadow: none; }
+  #mic-item span { position: absolute; inset: 0; }
+  #privacy { width: 6px; height: 6px; border-radius: 50%; background: #ff9f0a; margin: 0 -9px 0 -8px; opacity: 0; }
+  .clock { font-variant-numeric: tabular-nums; }
+
+  /* ---- note window --------------------------------------------------------- */
+  #win { position: absolute; left: 189px; width: 420px; top: 64px; height: 186px; border-radius: 12px;
+         background: #fbfbfa; overflow: hidden;
+         box-shadow: 0 0 0 0.5px rgba(0,0,0,.28), 0 22px 60px rgba(0,0,0,.34), 0 4px 14px rgba(0,0,0,.16); }
+  #win .bar { height: 40px; display: flex; align-items: center; padding: 0 14px;
+              background: #f2f1ef; border-bottom: 0.5px solid rgba(0,0,0,.1); }
+  #win .lights { display: flex; gap: 8px; }
+  #win .lights i { width: 12px; height: 12px; border-radius: 50%; display: block;
+                   box-shadow: inset 0 0 0 0.5px rgba(0,0,0,.18); }
+  #win .title { position: absolute; left: 0; right: 0; top: 0; height: 40px; line-height: 40px; text-align: center;
+                font-size: 13px; font-weight: 600; color: #3a3a3c; }
+  #win .date { text-align: center; font-size: 11px; color: #9a9a9e; margin-top: 16px; }
+  #field { position: relative; margin: 14px 30px 0; min-height: 60px; font-size: 17px; line-height: 25px;
+           color: #1d1d1f; letter-spacing: -0.2px; }
+  #txt { display: inline; }
+  .caret { display: inline-block; width: 2px; height: 21px; margin-left: 1px; vertical-align: -4px;
+           border-radius: 1px; background: #0a7cff; }
+  #caret0 { position: absolute; left: 0; top: 2px; margin: 0; }
+
+  /* ---- island ----------------------------------------------------------- */
+  #island { position: absolute; left: 0; top: 0; width: 872.73px; height: 60px; pointer-events: none; }
+  #island svg { position: absolute; left: 0; top: 0; overflow: visible; }
+  .ilabel { position: absolute; top: 0; height: 38px; line-height: 38px; font-size: 12px; font-weight: 600;
+            color: #fff; white-space: nowrap; font-variant-numeric: tabular-nums; letter-spacing: 0; }
+  .bar5 { position: absolute; width: 2.6px; border-radius: 1.3px; background: var(--red); }
+
+  /* ---- voice caption ------------------------------------------------------ */
+  #voice { position: absolute; left: 436.36px; top: 310px; width: 0; height: 0; }
+  #bubble { position: absolute; left: -175px; top: 0; width: 350px; padding: 13px 20px 14px 52px;
+            border-radius: 20px; background: #2a2a2d;
+            box-shadow: 0 0 0 0.5px rgba(255,255,255,.08) inset, 0 18px 40px rgba(0,0,0,.30), 0 3px 10px rgba(0,0,0,.18);
+            color: rgba(255,255,255,var(--ink, 1)); font-size: 16px; line-height: 23px; letter-spacing: -0.15px; font-weight: 500;
+            transform-origin: 40px 100%; }
+  #bubble .q { color: rgba(255,255,255,calc(var(--ink, 1) * .45)); }
+  #bubble .w { display: inline-block; white-space: pre; }
+  #bubble::after { content: ""; position: absolute; left: 30px; bottom: -7px; width: 16px; height: 16px;
+                   background: #2a2a2d; transform: rotate(45deg); border-radius: 0 0 4px 0; }
+  #speaker { position: absolute; left: 16px; top: 13px; width: 24px; height: 22px; }
+  #speaker i { position: absolute; bottom: 0; width: 3px; border-radius: 1.5px; background: rgba(255,255,255,.75); }
+
+  /* ---- keycap ------------------------------------------------------------ */
+  #key { position: absolute; left: 70px; top: 314px; width: 70px; height: 66px; }
+  #key .shadow { position: absolute; left: 4px; right: 4px; bottom: -6px; height: 20px; border-radius: 50%;
+                 background: rgba(20,15,10,.45); filter: blur(9px); }
+  #key .base { position: absolute; inset: 4px 0 0 0; border-radius: 12px; background: linear-gradient(#bdbcc0, #9e9da3); }
+  #key .cap { position: absolute; left: 0; right: 0; top: 0; height: 60px; border-radius: 12px;
+              background: linear-gradient(180deg, #ffffff 0%, #f1f1f3 55%, #e6e6ea 100%);
+              box-shadow: inset 0 0 0 0.5px rgba(0,0,0,.10), inset 0 1px 0 #fff; }
+  #key .cap svg { position: absolute; left: 50%; top: 13px; transform: translateX(-50%); }
+  #key .cap span { position: absolute; left: 0; right: 0; bottom: 9px; text-align: center; font-size: 11px;
+                   font-weight: 500; color: #6e6e73; letter-spacing: .2px; }
+  #ring { position: absolute; left: 35px; top: 30px; width: 0; height: 0; }
+  #ring i { position: absolute; left: -45px; top: -45px; width: 90px; height: 90px; border-radius: 50%;
+            border: 2px solid rgba(255,255,255,.9); opacity: 0; }
+
+  #mark { position: absolute; right: 22px; bottom: 16px; color: rgba(255,255,255,.72); font-size: 12px;
+          font-weight: 600; letter-spacing: .2px; display: flex; align-items: center; gap: 6px; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="lid">
+    <div id="screen">
+      <div id="wall">
+        <svg viewBox="0 0 800 420" preserveAspectRatio="none" aria-hidden="true">
+          <defs>
+            <filter id="soft" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="18"/></filter>
+            <linearGradient id="h1" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0" stop-color="#2f5d55" stop-opacity=".85"/>
+              <stop offset="1" stop-color="#7b6a4c" stop-opacity=".6"/>
+            </linearGradient>
+            <linearGradient id="h2" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0" stop-color="#d9a777" stop-opacity=".75"/>
+              <stop offset=".6" stop-color="#c97c5d" stop-opacity=".7"/>
+              <stop offset="1" stop-color="#b9634e" stop-opacity=".8"/>
+            </linearGradient>
+          </defs>
+          <path filter="url(#soft)" fill="url(#h1)" d="M-60 230 C 120 170, 260 250, 420 205 S 700 150, 880 200 L 880 480 L -60 480 Z"/>
+          <path filter="url(#soft)" fill="url(#h2)" d="M-60 330 C 140 270, 300 340, 470 300 S 720 250, 880 300 L 880 480 L -60 480 Z"/>
+        </svg>
+      </div>
+
+      <div id="menubar">
+        <div class="menus"><b>Notes</b><span>File</span><span>Edit</span><span>View</span></div>
+        <div class="status">
+          <div id="mic-item"><span id="mi-idle">🎙</span><span id="mi-rec">🔴</span><span id="mi-proc">⏳</span></div>
+          <!-- wifi -->
+          <svg width="16" height="12" viewBox="0 0 16 12"><path d="M8 11.4l2.1-2.6a3.4 3.4 0 0 0-4.2 0z" fill="#fff"/><path d="M3.9 6.9a6.4 6.4 0 0 1 8.2 0l1.3-1.6a8.5 8.5 0 0 0-10.8 0z" fill="#fff"/><path d="M1.3 3.7a10.5 10.5 0 0 1 13.4 0L16 2.1a12.6 12.6 0 0 0-16 0z" fill="#fff"/></svg>
+          <!-- control center -->
+          <svg width="16" height="14" viewBox="0 0 16 14"><rect x=".7" y=".7" width="14.6" height="5.4" rx="2.7" fill="none" stroke="#fff" stroke-width="1.2"/><circle cx="12.6" cy="3.4" r="1.6" fill="#fff"/><rect x=".7" y="7.9" width="14.6" height="5.4" rx="2.7" fill="none" stroke="#fff" stroke-width="1.2"/><circle cx="3.4" cy="10.6" r="1.6" fill="#fff"/></svg>
+          <div id="privacy"></div>
+          <span class="clock">9:41 AM</span>
+        </div>
+      </div>
+
+      <div id="win">
+        <div class="bar"><div class="lights"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i></div></div>
+        <div class="title">New Note</div>
+        <div class="date">October 28, 2026 at 9:41 AM</div>
+        <div id="field"><span id="caret0" class="caret"></span><span id="txt"></span><span id="caret1" class="caret"></span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- island, drawn in stage points; the screen top is at y = 22 + 11 = 33; the screen spans x 37..836 -->
+  <div id="island">
+    <svg id="isvg" width="873" height="120" viewBox="0 0 873 120">
+      <path id="notch" fill="#000"/>
+      <path id="pill" fill="#000"/>
+      <circle cx="436.36" cy="52" r="3.6" fill="#0b0c12"/>
+      <circle cx="436.36" cy="52" r="2" fill="#141826"/>
+      <circle cx="435.56" cy="51.2" r=".6" fill="#3b4a6e" opacity=".8"/>
+      <circle id="dot" r="4" fill="#ff453a"/>
+      <path id="spin" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/>
+      <path id="check" fill="none" stroke="#30d158" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <div id="timer" class="ilabel">0:00</div>
+    <div id="lab-proc" class="ilabel">Transcribing</div>
+    <div id="lab-done" class="ilabel">Pasted</div>
+    <div id="bars"></div>
+  </div>
+
+  <div id="voice">
+    <div id="bubble">
+      <div id="speaker"><i style="left:0"></i><i style="left:5px"></i><i style="left:10px"></i><i style="left:15px"></i><i style="left:20px"></i></div>
+      <span id="words"></span>
+    </div>
+  </div>
+
+  <div id="key">
+    <div class="shadow"></div>
+    <div id="ring"><i></i></div>
+    <div class="base"></div>
+    <div class="cap">
+      <svg width="14" height="20" viewBox="0 0 14 20" fill="none" stroke="#3a3a3c" stroke-width="1.6" stroke-linecap="round">
+        <rect x="3.6" y="1" width="6.8" height="11" rx="3.4" fill="#3a3a3c" stroke="none"/>
+        <path d="M1.2 9.2a5.8 5.8 0 0 0 11.6 0M7 15v3.4"/>
+      </svg>
+      <span>F5</span>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  // ---- timeline (seconds) ------------------------------------------------
+  const LOOP = 9.0;
+  const KEY1 = 0.40, REC_ON = 0.55;     // F5 down, island opens
+  const KEY2 = 4.30, PROC_ON = 4.42;    // F5 again, transcribing
+  const DONE_ON = 5.45, IDLE_ON = 6.45; // pasted, then the pill closes
+  const FADE0 = 8.05, FADE1 = 8.60;     // typed text fades back to the empty start
+  const SENTENCE = "Pick up oat milk on the way home, and call Mom at six.";
+  // one syllable per word: [start, duration, loudness]
+  const SYL = [
+    [0.95, .20, .85], [1.17, .16, .62], [1.38, .24, .95], [1.66, .25, .90],
+    [1.98, .14, .58], [2.13, .12, .48], [2.27, .22, .86], [2.52, .34, .96],
+    [3.06, .14, .60], [3.22, .22, .90], [3.47, .25, .97], [3.74, .13, .58], [3.89, .34, 1.0],
+  ];
+  const WORDS = SENTENCE.split(" ");
+
+  // ---- island constants from whisper-dictation.lua -------------------------
+  const CX = 436.36, TOP = 33, REST_W = 220, H = 38;
+  const WINGS = { recording: 64, transcribing: 96, done: 72 };
+  const NBARS = 5;
+
+  const $ = (id) => document.getElementById(id);
+  const clamp = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
+  const smooth = (x) => { x = clamp(x); return x * x * (3 - 2 * x); };
+  const easeOut = (x) => 1 - Math.pow(1 - clamp(x), 3);
+
+  function modeAt(t) {
+    if (t >= REC_ON && t < PROC_ON) return "recording";
+    if (t >= PROC_ON && t < DONE_ON) return "transcribing";
+    if (t >= DONE_ON && t < IDLE_ON) return "done";
+    return "idle";
+  }
+
+  // Speech loudness 0..1: one bump per syllable, with a little flutter.
+  function voice(t) {
+    let v = 0;
+    for (const [s, d, a] of SYL) {
+      const u = (t - s) / d;
+      if (u > 0 && u < 1.5) {
+        const shape = u < 0.22 ? Math.sin(Math.PI / 2 * u / 0.22)
+                    : u < 1 ? 1 - 0.7 * Math.pow((u - 0.22) / 0.78, 1.4)
+                    : 0.3 * (1 - (u - 1) / 0.5);
+        v = Math.max(v, a * shape);
+      }
+    }
+    v *= 0.9 + 0.1 * Math.sin(t * 41) * Math.sin(t * 17.3);
+    return clamp(v);
+  }
+
+  // Deterministic simulation of islandStep() at a fixed step from t = 0.
+  const DT = 1 / 480;
+  function springStep(s, target, h, k, zeta) {
+    const c = 2 * zeta * Math.sqrt(k);
+    s.v += (k * (target - s.x) - c * s.v) * h;
+    s.x += s.v * h;
+  }
+  function simulate(T) {
+    const st = { w: { x: REST_W, v: 0 }, rec: 0, proc: 0, done: 0, level: 0, bands: new Array(NBARS).fill(0) };
+    const n = Math.round(T / DT);
+    for (let k = 1; k <= n; k++) {
+      const t = k * DT, mode = modeAt(t), wing = WINGS[mode];
+      springStep(st.w, wing ? REST_W + 2 * wing : REST_W, DT, 260, 0.62);
+      const fin = 1 - Math.exp(-DT * 12), fout = 1 - Math.exp(-DT * 40);
+      for (const [key, m] of [["rec", "recording"], ["proc", "transcribing"], ["done", "done"]]) {
+        const on = mode === m;
+        st[key] += ((on ? 1 : 0) - st[key]) * (on ? fin : fout);
+      }
+      const target = mode === "recording" ? Math.max(0.05, Math.min(1, voice(t) * 1.35)) : 0;
+      st.level += (target - st.level) * (1 - Math.exp(-DT * 18));
+      for (let i = 1; i <= NBARS; i++) {
+        const wob = Math.abs(Math.sin(t * (5.3 + i * 1.37) + i * 1.9) * Math.cos(t * (2.1 + i * 0.71)));
+        const bt = st.level * (0.4 + 0.6 * wob);
+        st.bands[i - 1] += (bt - st.bands[i - 1]) * (1 - Math.exp(-DT * 20));
+      }
+    }
+    return st;
+  }
+
+  // ---- static DOM setup ------------------------------------------------------
+  const barEls = [];
+  for (let i = 0; i < NBARS; i++) { const b = document.createElement("div"); b.className = "bar5"; $("bars").appendChild(b); barEls.push(b); }
+  const wordEls = [];
+  const wordsBox = $("words");
+  const q0 = document.createElement("span"); q0.className = "q"; q0.textContent = "“"; wordsBox.appendChild(q0);
+  WORDS.forEach((w, i) => {
+    const s = document.createElement("span"); s.className = "w"; s.textContent = w + (i < WORDS.length - 1 ? " " : "");
+    wordsBox.appendChild(s); wordEls.push(s);
+  });
+  const q1 = document.createElement("span"); q1.className = "q"; q1.textContent = "”"; wordsBox.appendChild(q1);
+  $("txt").textContent = SENTENCE;
+  const notchPath = pillPath(REST_W, 5);
+  $("notch").setAttribute("d", notchPath);
+
+  // Black shape hanging from the screen top: bottom corners r, concave shoulders s at the top.
+  function pillPath(W, s) {
+    const x0 = CX - W / 2, x1 = CX + W / 2, r = Math.min(14, H / 2), y0 = TOP - 9, yb = TOP + H;
+    return `M${x0 - s} ${y0} L${x0 - s} ${TOP} Q${x0} ${TOP} ${x0} ${TOP + s} L${x0} ${yb - r}` +
+           ` A${r} ${r} 0 0 0 ${x0 + r} ${yb} L${x1 - r} ${yb} A${r} ${r} 0 0 0 ${x1} ${yb - r}` +
+           ` L${x1} ${TOP + s} Q${x1} ${TOP} ${x1 + s} ${TOP} L${x1 + s} ${y0} Z`;
+  }
+
+  function keyPress(t, at) {
+    const u = t - at;
+    if (u < 0 || u > 0.34) return 0;
+    if (u < 0.05) return u / 0.05;
+    if (u < 0.17) return 1;
+    return 1 - smooth((u - 0.17) / 0.17);
+  }
+
+  function caretOn(t, t0) { return ((t - t0) % 1 + 1) % 1 < 0.52 ? 1 : 0; }
+
+  // ---- seek -------------------------------------------------------------------
+  window.seek = function (t) {
+    t = ((t % LOOP) + LOOP) % LOOP;
+    const st = simulate(t);
+    const mode = modeAt(t);
+    const W = Math.max(0, st.w.x);
+    const x0 = CX - W / 2, x1 = CX + W / 2, cy = TOP + H / 2;
+    const left = x0 + 20, right = x1 - 14;
+
+    $("pill").setAttribute("d", pillPath(Math.max(W, 1), clamp((W - REST_W) / 30) * 4));
+    const open = clamp((W - REST_W) / 80);
+    const a = open * clamp(Math.max(st.rec, st.proc, st.done) * 1.3 - 0.15);
+
+    // recording: dot, timer, bars
+    const ar = a * st.rec;
+    const blink = 0.5 + 0.5 * Math.cos((t - REC_ON) * 2 * Math.PI);
+    const dot = $("dot");
+    dot.setAttribute("cx", left - 2); dot.setAttribute("cy", cy);
+    dot.setAttribute("opacity", ar * (0.55 + 0.45 * blink));
+    const secs = Math.floor(Math.max(0, Math.min(t, PROC_ON) - REC_ON));
+    const tm = $("timer");
+    tm.textContent = `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, "0")}`;
+    tm.style.left = (left + 8) + "px"; tm.style.top = TOP + "px"; tm.style.opacity = ar;
+    for (let i = 1; i <= NBARS; i++) {
+      const bh = 3 + st.bands[i - 1] * (H - 16), el = barEls[i - 1];
+      el.style.left = (right - 6 - (i - 1) * 5) + "px";
+      el.style.top = (cy - bh / 2) + "px"; el.style.height = bh + "px"; el.style.opacity = ar;
+    }
+
+    // transcribing: spinner + label
+    const ap = a * st.proc;
+    const start = ((t * 340) % 360) * Math.PI / 180, end = start + 250 * Math.PI / 180, R = 6;
+    const sp = $("spin");
+    sp.setAttribute("d", `M${left + R * Math.cos(start)} ${cy + R * Math.sin(start)} A${R} ${R} 0 1 1 ${left + R * Math.cos(end)} ${cy + R * Math.sin(end)}`);
+    sp.setAttribute("opacity", ap);
+    const lp = $("lab-proc");
+    lp.style.left = (right - lp.offsetWidth) + "px"; lp.style.top = TOP + "px"; lp.style.opacity = ap * 0.92;
+
+    // done: check + label
+    const ad = a * st.done;
+    const ck = $("check");
+    ck.setAttribute("d", `M${left - 5} ${cy + 0.5} L${left - 1.5} ${cy + 4} L${left + 5.5} ${cy - 3.5}`);
+    ck.setAttribute("opacity", ad);
+    const ld = $("lab-done");
+    ld.style.left = (right - ld.offsetWidth) + "px"; ld.style.top = TOP + "px"; ld.style.opacity = ad * 0.92;
+
+    // menu bar status item and the orange mic-in-use dot
+    $("mi-idle").style.opacity = (mode === "idle" || mode === "done") ? 1 : 0;
+    $("mi-rec").style.opacity = mode === "recording" ? 1 : 0;
+    $("mi-proc").style.opacity = mode === "transcribing" ? 1 : 0;
+    $("privacy").style.opacity = clamp((t - REC_ON - 0.15) / 0.2) * (1 - clamp((t - PROC_ON - 0.1) / 0.25));
+
+    // keycap
+    const p = Math.max(keyPress(t, KEY1), keyPress(t, KEY2));
+    const cap = document.querySelector("#key .cap");
+    cap.style.transform = `translateY(${p * 4}px)`;
+    cap.style.background = p > 0 ? `linear-gradient(180deg, hsl(240,4%,${100 - p * 5}%) 0%, hsl(240,4%,${94.5 - p * 5}%) 55%, hsl(240,6%,${91 - p * 5}%) 100%)` : "";
+    document.querySelector("#key .shadow").style.opacity = 1 - p * 0.35;
+    const ring = document.querySelector("#ring i");
+    let ru = -1;
+    for (const at of [KEY1, KEY2]) if (t >= at + 0.03 && t < at + 0.63) ru = (t - at - 0.03) / 0.6;
+    if (ru >= 0) { const e = easeOut(ru); ring.style.opacity = 0.75 * (1 - ru); ring.style.transform = `scale(${0.82 + 0.5 * e})`; }
+    else ring.style.opacity = 0;
+
+    // voice bubble: in while speaking, dims while transcribing, clears at paste
+    const bIn = easeOut((t - 0.80) / 0.28), bOut = smooth((t - DONE_ON) / 0.24);
+    const bubble = $("bubble");
+    const bVis = t < 0.80 ? 0 : (t >= DONE_ON + 0.24 ? 0 : bIn * (1 - bOut));
+    bubble.style.opacity = bVis;
+    bubble.style.setProperty("--ink", 1 - 0.35 * smooth((t - PROC_ON) / 0.3));
+    bubble.style.transform = `translateY(${(1 - bIn) * 10 + bOut * 6}px) scale(${0.96 + 0.04 * bIn})`;
+    wordEls.forEach((el, i) => {
+      const u = clamp((t - SYL[i][0] + 0.03) / 0.16);
+      el.style.opacity = u;
+      el.style.transform = `translateY(${(1 - easeOut(u)) * 5}px)`;
+      el.style.filter = u < 1 ? `blur(${(1 - u) * 3}px)` : "";
+    });
+    const lastU = clamp((t - SYL[SYL.length - 1][0] - 0.12) / 0.16);
+    q1.style.opacity = lastU;
+    // small speaker meter in the bubble follows the same voice
+    const lv = mode === "recording" ? voice(t) : 0;
+    document.querySelectorAll("#speaker i").forEach((el, i) => {
+      const k = [0.5, 0.85, 1, 0.75, 0.45][i];
+      const wob = 0.6 + 0.4 * Math.abs(Math.sin(t * (7 + i * 1.9) + i));
+      el.style.height = (4 + 18 * lv * k * wob) + "px";
+      el.style.bottom = (11 - (4 + 18 * lv * k * wob) / 2) + "px";
+    });
+
+    // note text: quick reveal at paste, fade out at the end of the loop
+    const rv = easeOut((t - DONE_ON - 0.03) / 0.24);
+    const fadeOut = smooth((t - FADE0) / (FADE1 - FADE0 - 0.05));
+    const shown = t >= DONE_ON + 0.03 && t < FADE1;
+    const txt = $("txt");
+    txt.style.opacity = shown ? rv * (1 - fadeOut) : 0;
+    txt.style.filter = shown && rv < 1 ? `blur(${(1 - rv) * 5}px)` : "";
+    txt.style.display = shown ? "inline" : "none";
+    $("caret1").style.display = shown ? "inline-block" : "none";
+    $("caret1").style.opacity = shown ? (t < DONE_ON + 0.55 ? 1 : caretOn(t, DONE_ON + 0.55)) * (1 - fadeOut) * rv : 0;
+    $("caret0").style.display = shown ? "none" : "block";
+    $("caret0").style.opacity = t >= FADE1 ? caretOn(t, 8.0) : caretOn(t, 0);
+  };
+  window.LOOP = LOOP;
+
+  const still = /[?&]still/.test(location.search);
+  document.fonts.ready.then(() => {
+    window.seek(0);
+    window.sceneReady = true;
+    if (!still) {
+      const t0 = performance.now();
+      const tick = () => { window.seek((performance.now() - t0) / 1000); requestAnimationFrame(tick); };
+      requestAnimationFrame(tick);
+    }
+  });
+})();
+</script>
+</body>
+</html>
