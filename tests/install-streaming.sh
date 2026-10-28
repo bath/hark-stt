@@ -51,6 +51,9 @@ case "$url" in
   */recorder/WhisperRecorder.swift)
     cp "$REPO_ROOT/recorder/WhisperRecorder.swift" "$dest"
     ;;
+  */sounds/generate.py)
+    cp "$REPO_ROOT/sounds/generate.py" "$dest"
+    ;;
   */karabiner/whisper-dictation.json)
     cp "$REPO_ROOT/karabiner/whisper-dictation.json" "$dest"
     ;;
@@ -64,7 +67,9 @@ case "$url" in
 esac
 MOCK
 
-for command in open killall sleep; do
+# launchctl and lsof must never reach the real user session: the installer
+# replaces the LaunchAgent and kills whatever holds the server port.
+for command in open killall sleep launchctl lsof; do
   cat >"$TMP/bin/$command" <<'MOCK'
 #!/usr/bin/env bash
 exit 0
@@ -116,6 +121,8 @@ for artifact in \
   "$TMP/home/.hammerspoon/whisper-dictation.lua" \
   "$TMP/home/.hammerspoon/WhisperRecorder.swift" \
   "$TMP/home/.hammerspoon/bin/whisper-recorder" \
+  "$TMP/home/.hammerspoon/whisper-sounds/packs.json" \
+  "$TMP/home/.hammerspoon/whisper-sounds/pop/start.wav" \
   "$TMP/home/.config/karabiner/assets/complex_modifications/whisper-dictation.json"; do
   if [ ! -f "$artifact" ]; then
     echo "FAIL: installer did not create $artifact" >&2
