@@ -49,6 +49,14 @@ hark setup
 
 `brew install` cannot write to your home folder, so `hark setup` runs the installer from the formula.
 
+## Why Hark
+
+The dictation built into macOS mishears words, and you cannot tell where your voice goes. Hark is better in the three ways that matter:
+
+1. **Private.** Your voice never leaves your Mac. Not to Apple, not to us, not to anyone. No account, no telemetry, and the code is open.
+2. **Accurate.** Whisper large-v3-turbo writes full sentences with punctuation and capital letters, and handles names, technical words and long, fast speech.
+3. **Fast.** The model stays loaded, so there is no wait. On an M5 Pro, 15 seconds of speech becomes text in about 0.3 s, and the mic starts about 66 ms after F5.
+
 ## What you get
 
 - **Dictation in any text field.** Mail, Slack, your editor, a browser form. The text is pasted where your cursor is.
@@ -190,7 +198,7 @@ To change the Whisper model or other server flags, edit `~/Library/LaunchAgents/
 
 ## FAQ
 
-**How is this different from Apple Dictation?** It uses Whisper large-v3-turbo, works with the same key in every app, and never needs a network connection after install, except to check for updates when you ask. You can turn Apple Dictation off (step 3 above) so the two do not conflict.
+**How is this different from Apple Dictation?** It is more private, more accurate and faster (see [Why Hark](#why-hark)). Your voice never leaves your Mac, Whisper large-v3-turbo gets more words right, and the text arrives about 0.3 s after you stop. It also works with the same key in every app, and never needs a network connection after install, except to check for updates when you ask. You can turn Apple Dictation off (step 3 above) so the two do not conflict.
 
 **Does it type while I talk?** No. Whisper gets the whole take after you stop, so the text arrives in one paste.
 

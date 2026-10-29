@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Hark: better, private dictation for your Mac</title>
-<meta name="description" content="Hark is better, private dictation for macOS. Free and open source. Press F5, talk, press F5 again. Whisper turns your speech into text on your Mac and pastes it where your cursor is, in any app. No account, no telemetry.">
+<meta name="description" content="Hark is better, private dictation for macOS: more private, more accurate and faster than the dictation built into your Mac. Free and open source. Press F5, talk, press F5 again. Whisper turns your speech into text on your Mac and pastes it where your cursor is, in any app. No account, no telemetry.">
 <link rel="canonical" href="https://hark.works/">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="alternate" type="text/plain" href="llms.txt" title="LLM-readable summary">
@@ -16,12 +16,12 @@
 <meta property="og:site_name" content="Hark">
 <meta property="og:url" content="https://hark.works/">
 <meta property="og:title" content="Hark. Better, private dictation for your Mac.">
-<meta property="og:description" content="Press F5, talk, press F5 again. Whisper runs on your Mac and pastes the text where your cursor is, in any app. Free, MIT license.">
+<meta property="og:description" content="Private, accurate and fast. Press F5, talk, press F5 again. Whisper runs on your Mac and pastes the text where your cursor is, in any app. Free, MIT license.">
 <meta property="og:image" content="https://hark.works/hark-demo-poster.png">
 <meta property="og:image:alt" content="The MacBook notch grows into a black pill while you talk, then shows Transcribing and Pasted.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Hark. Better, private dictation for your Mac.">
-<meta name="twitter:description" content="Press F5, talk, press F5 again. Whisper runs on your Mac and pastes the text where your cursor is, in any app. Free, MIT license.">
+<meta name="twitter:description" content="Private, accurate and fast. Press F5, talk, press F5 again. Whisper runs on your Mac and pastes the text where your cursor is, in any app. Free, MIT license.">
 <meta name="twitter:image" content="https://hark.works/hark-demo-poster.png">
 <meta name="twitter:image:alt" content="The MacBook notch grows into a black pill while you talk, then shows Transcribing and Pasted.">
 
@@ -35,7 +35,7 @@
   "@type": ["SoftwareApplication", "SoftwareSourceCode"],
   "name": "Hark",
   "alternateName": "hark-stt",
-  "description": "Better, private dictation for macOS. Press F5, talk, press F5 again. Whisper large-v3-turbo runs locally through whisper.cpp and pastes the text where your cursor is, in any app.",
+  "description": "Better, private dictation for macOS: more private, more accurate and faster than built-in Mac dictation. Press F5, talk, press F5 again. Whisper large-v3-turbo runs locally through whisper.cpp and pastes the text where your cursor is, in any app.",
   "url": "https://hark.works/",
   "image": "https://hark.works/hark-demo-poster.png",
   "operatingSystem": "macOS",
@@ -246,7 +246,7 @@ h1 {
 }
 h1 .mark { display: block; color: var(--ink-2); font-weight: 700; }
 .lede { font-size: clamp(1.1rem, 1.6vw, 1.3rem); margin: 26px 0 0; max-width: 34ch; text-wrap: pretty; }
-.facts { list-style: none; padding: 0; margin: 26px 0 0; display: flex; flex-wrap: wrap; gap: 8px 22px; font-size: 15px; color: var(--ink-2); }
+.facts { list-style: none; padding: 0; margin: 26px 0 0; display: flex; flex-direction: column; gap: 8px; font-size: 15px; color: var(--ink-2); }
 .facts li { display: inline-flex; align-items: center; gap: 8px; }
 .facts li::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--ok); }
 .agent-note {
@@ -370,6 +370,7 @@ h1 .mark { display: block; color: var(--ink-2); font-weight: 700; }
 .detail + .detail { }
 .detail h3 { font-size: 1.15rem; font-weight: 700; padding-top: 16px; border-top: 2px solid var(--ink); display: inline-block; }
 .detail p { margin: 10px 0 0; color: var(--ink-2); }
+.details.pillars { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .welcome {
   margin: 8px 0 0; grid-column: 1 / -1;
   display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 32px; align-items: center;
@@ -419,7 +420,7 @@ h1 .mark { display: block; color: var(--ink-2); font-weight: 700; }
   .step { grid-template-columns: minmax(0, 1fr); gap: 14px; }
   .spec { grid-template-columns: minmax(0, 1fr); }
   .spec div, .spec div:nth-child(odd), .spec div:nth-child(even) { padding: 18px 0; border-left: 0; }
-  .details { grid-template-columns: minmax(0, 1fr); }
+  .details, .details.pillars { grid-template-columns: minmax(0, 1fr); }
   .welcome { grid-template-columns: minmax(0, 1fr); }
   .install-col .cols { grid-template-columns: minmax(0, 1fr); }
   .cmd pre { font-size: 13px; padding: 12px 12px 14px; }
@@ -458,6 +459,7 @@ h1 .mark { display: block; color: var(--ink-2); font-weight: 700; }
   <span class="sr-only" aria-live="polite" data-island-status></span>
   <span class="sr-only" aria-live="polite" data-copy-status></span>
   <nav class="site-nav" aria-label="Site">
+    <a href="#why">Why Hark</a>
     <a href="#install">Install</a>
     <a class="wide" href="#how">How it works</a>
     <a class="wide" href="#setup">Setup</a>
@@ -472,9 +474,9 @@ h1 .mark { display: block; color: var(--ink-2); font-weight: 700; }
       <h1 id="title"><span class="mark">Hark.</span> Better, private dictation for your Mac.</h1>
       <p class="lede">Press <kbd>F5</kbd>, talk, press <kbd>F5</kbd> again. Whisper turns your speech into text on your Mac and pastes it where your cursor is, in any app.</p>
       <ul class="facts">
-        <li>Runs on your Mac</li>
-        <li>No account, no telemetry</li>
-        <li>MIT license, free</li>
+        <li>Private: nothing leaves your Mac</li>
+        <li>Accurate: Whisper large-v3-turbo</li>
+        <li>Fast: text in about 0.3 s</li>
       </ul>
       <p class="agent-note">If you are an AI agent, read <a href="https://github.com/bath/hark-stt/blob/main/AGENTS.md">AGENTS.md</a> and follow it step by step. <a href="llms.txt">llms.txt</a> has a plain-text summary of this page.</p>
     </div>
@@ -487,6 +489,29 @@ h1 .mark { display: block; color: var(--ink-2); font-weight: 700; }
         <button class="vid-toggle" type="button" aria-controls="demo">Pause</button>
       </figcaption>
     </figure>
+  </section>
+
+  <section id="why" class="wrap sec" aria-labelledby="why-h">
+    <div class="sec-grid">
+      <div class="sec-head">
+        <h2 id="why-h">Better than your Mac's built‑in dictation</h2>
+        <p>The dictation that comes with macOS mishears words, and you cannot tell where your voice goes. Hark fixes the three things that matter.</p>
+      </div>
+      <div class="details pillars">
+        <div class="detail">
+          <h3>Private</h3>
+          <p>Your voice never leaves your Mac. Not to Apple, not to us, not to anyone. No account and no telemetry. The code is open, so you can check.</p>
+        </div>
+        <div class="detail">
+          <h3>Accurate</h3>
+          <p>Whisper large-v3-turbo writes full sentences with punctuation and capital letters. It handles names, technical words and long, fast speech.</p>
+        </div>
+        <div class="detail">
+          <h3>Fast</h3>
+          <p>The model stays loaded, so there is no wait. On an M5 Pro, 15 seconds of speech becomes text in about 0.3 s, and the mic starts about 66 ms after <kbd>F5</kbd>.</p>
+        </div>
+      </div>
+    </div>
   </section>
 
   <section id="install" class="wrap sec install" aria-labelledby="install-h">
