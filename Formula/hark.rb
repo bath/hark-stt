@@ -1,10 +1,10 @@
 # Copy of https://github.com/bath/homebrew-tap/blob/main/Formula/hark.rb.
 # Edit the tap after each release: new url and sha256.
 class Hark < Formula
-  desc "Private, on-device dictation for macOS: press F5, talk, and the text is pasted"
+  desc "Better, private, on-device dictation for macOS"
   homepage "https://hark.works"
-  url "https://github.com/bath/hark-stt/archive/refs/tags/v1.2.0.tar.gz"
-  sha256 "04df5ce29c6c50bee8edc7d1314bb049ede7dbf0deae7b80bd296aa7586bd8dd"
+  url "https://github.com/bath/hark-stt/archive/refs/tags/v1.2.1.tar.gz"
+  sha256 "06e31685c1aaebc24c88eb7650cf6148b4ed2ff64bd22ac9a0317bb727c4034d"
   license "MIT"
 
   depends_on arch: :arm64

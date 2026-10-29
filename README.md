@@ -1,7 +1,7 @@
 <h1 align="center">Hark</h1>
 
 <p align="center">
-  Private dictation for your Mac.<br>
+  Better, private dictation for your Mac.<br>
   Press F5, talk, press F5 again. Your words are typed into whatever app you are in.<br>
   Whisper runs on your Mac. No cloud, no account, no telemetry.
 </p>
