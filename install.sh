@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Hark installer. Private, on-device dictation for macOS.
+# Hark installer. Better, private, on-device dictation for macOS.
 # Run it either way:
 #   curl -fsSL https://hark.works/install.sh | bash
 #   ./install.sh            (from a local clone)

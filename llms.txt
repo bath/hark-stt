@@ -1,6 +1,6 @@
 # Hark
 
-> Hark is private, on-device dictation for macOS on Apple silicon. Press F5 (or ⌥Space), talk, press it again, and the text is pasted where the cursor is, in any app. Whisper large-v3-turbo runs locally through whisper.cpp. No cloud, no account, no telemetry. MIT license. Repo: https://github.com/bath/hark-stt
+> Hark is better, private, on-device dictation for macOS on Apple silicon. Press F5 (or ⌥Space), talk, press it again, and the text is pasted where the cursor is, in any app. Whisper large-v3-turbo runs locally through whisper.cpp. No cloud, no account, no telemetry. MIT license. Repo: https://github.com/bath/hark-stt
 
 To install Hark for a user, an agent runs the installer with `--json`, then repeats `~/.hammerspoon/hark/bin/hark doctor --json` and follows `next_step` until `ok` is true. When `next_step.needs_human` is true, the agent runs `next_step.command` to open the right System Settings pane and tells the user `next_step.fix`.
 

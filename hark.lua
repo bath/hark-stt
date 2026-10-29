@@ -1,4 +1,4 @@
--- Hark: private, low-latency local dictation for macOS.
+-- Hark: better, private, low-latency local dictation for macOS.
 -- Installed as ~/.hammerspoon/hark/init.lua and loaded with require("hark").
 --
 -- A persistent native helper prepares a stopped Core Audio HAL input unit, and
