@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Hark is better, private, on-device dictation for macOS. The user presses F5 (or ⌥Space), talks, presses it again, and the text is pasted where their cursor is. Whisper runs locally through whisper.cpp. This file tells an AI agent how to install Hark for a user, and how to work on this repo.
+Hark is better, private, on-device dictation for macOS. It is more private, more accurate and faster than the dictation built into macOS. The user presses F5 (or ⌥Space), talks, presses it again, and the text is pasted where their cursor is. Whisper runs locally through whisper.cpp. This file tells an AI agent how to install Hark for a user, and how to work on this repo.
 
 ## Install Hark for a user
 
