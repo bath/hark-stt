@@ -10,8 +10,9 @@ The website's live demo (issue #25): the Vercel project `hark-demo-api`
   it (CORS and an Origin check). Nothing is stored or logged.
 
 Limits (`lib/limits.js`, tested with `npm test`): 20 clips per IP address per
-hour, and 6 hours of audio per day for everyone (about $0.24 a day at Groq's
-$0.04 per hour of audio).
+hour, and 6 billed hours per day for everyone: about $0.24 a day at Groq's
+$0.04 per hour. Groq bills each request as at least 10 s, so short clips
+count as 10 s.
 
 ## Turn it on
 

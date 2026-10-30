@@ -37,6 +37,9 @@ final class AppController: NSObject, NSApplicationDelegate {
     private var migrating = false
     private var keyMappingApplied = false
     private var engine: DictationEngine!
+    private(set) var microphone: CoreAudioMicrophone!
+    /// The Hammerspoon Hark is still loaded: it keeps the keys until this app can dictate.
+    private var waitingToTakeOver = false
     private var menu: StatusMenu!
     private var hotkeys: Hotkeys!
     private var events: Task<Void, Never>?
@@ -56,11 +59,11 @@ final class AppController: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         moveFromHammerspoon()
-        engine = DictationEngine(microphone: CoreAudioMicrophone(), transcriber: slot, paster: PasteboardPaster())
+        microphone = CoreAudioMicrophone(deviceName: settings.microphone)
+        engine = DictationEngine(microphone: microphone, transcriber: slot, paster: PasteboardPaster())
         menu = StatusMenu(controller: self)
         hotkeys = Hotkeys { [weak self] in self?.press() }
-        hotkeysTaken = hotkeys.register()
-        if !hotkeysTaken.isEmpty { log.error("Hotkeys taken by another app: \(self.hotkeysTaken.joined(separator: ", "))") }
+        if !waitingToTakeOver { registerHotkeys() }
         listen()
         setup.onRetry = { [weak self] in self?.downloadModel() }
         if let model = ModelLocation.existing() {
@@ -81,6 +84,7 @@ final class AppController: NSObject, NSApplicationDelegate {
             MainActor.assumeIsolated {
                 // `Hark f5-key` in another process can change the mapping.
                 self?.keyMappingApplied = KeyMapper.system.isApplied()
+                self?.setupProgressed()
                 self?.writeStatus()
             }
         }
@@ -114,13 +118,25 @@ final class AppController: NSObject, NSApplicationDelegate {
         do { try status.write() } catch { log.error("status: \(String(describing: error))") }
     }
 
+    /// `open Hark.app` while it runs, or a double-click in Finder.
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows: Bool) -> Bool {
+        showSetup()
+        return true
+    }
+
+    func chooseMicrophone(_ name: String?) {
+        settings.microphone = name
+        let microphone = microphone!
+        Task { await microphone.choose(name) }
+    }
+
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         hotkeys.unregister()
         statusTimer?.invalidate()
         // Quit before the move finished: give the user their old Hark back.
         if migrating { try? migration.resume() }
         // F18 does nothing without Hark, so give F5 back to macOS.
-        try? KeyMapper.system.remove()
+        removeKeyMapping()
         try? FileManager.default.removeItem(at: AppStatus.file)
         engine.shutdown()
         download?.cancel()
@@ -225,7 +241,7 @@ final class AppController: NSObject, NSApplicationDelegate {
         if on {
             applyKeyMapping()
         } else {
-            do { try KeyMapper.system.remove() } catch { log.error("hidutil: \(String(describing: error))") }
+            removeKeyMapping()
             keyMappingApplied = false
             writeStatus()
         }
@@ -233,9 +249,23 @@ final class AppController: NSObject, NSApplicationDelegate {
 
     private func applyKeyMapping(force: Bool = false) {
         guard settings.f5Key else { return }
-        do { try KeyMapper.system.apply(force: force) } catch { log.error("hidutil: \(String(describing: error))") }
+        do {
+            // Keep what an earlier run added too: it is still Hark's to remove.
+            settings.f5Entries = Array(Set(settings.f5Entries + (try KeyMapper.system.apply(force: force))))
+        } catch {
+            log.error("hidutil: \(String(describing: error))")
+        }
         keyMappingApplied = KeyMapper.system.isApplied()
         writeStatus()
+    }
+
+    private func removeKeyMapping() {
+        do {
+            try KeyMapper.system.remove(settings.f5Entries)
+            settings.f5Entries = []
+        } catch {
+            log.error("hidutil: \(String(describing: error))")
+        }
     }
 
     func setNotchIsland(_ on: Bool) {
@@ -282,18 +312,45 @@ final class AppController: NSObject, NSApplicationDelegate {
         }
     }
 
+    private func registerHotkeys() {
+        hotkeysTaken = hotkeys.register()
+        if !hotkeysTaken.isEmpty { log.error("Hotkeys taken by another app: \(self.hotkeysTaken.joined(separator: ", "))") }
+    }
+
+    /// Called every few seconds and when the model loads: turns on what waits
+    /// for a complete setup.
+    private func setupProgressed() {
+        setupModel.refreshPermissions()
+        let ready = setupModel.isComplete && modelState == .loaded
+        if ready && !settings.has(.loginItemChosen) { setLoginItem(true) }
+        if ready && waitingToTakeOver { takeOver() }
+    }
+
     // MARK: - Move from Hammerspoon
 
+    /// Copies the old settings at once. The old Hark keeps dictating until
+    /// this app can (model loaded, Microphone and Accessibility on); then
+    /// `takeOver` pauses it.
     private func moveFromHammerspoon() {
         guard migration.hasLegacyInstall else { return }
         let old = UserDefaults(suiteName: "org.hammerspoon.Hammerspoon")?.dictionaryRepresentation() ?? [:]
         Migration.importSettings(from: old, into: settings)
+        if migration.isLoaded {
+            waitingToTakeOver = true
+        } else if migration.isPaused {
+            migrating = true // an earlier run paused it and did not finish
+        }
+    }
+
+    private func takeOver() {
+        waitingToTakeOver = false
         do {
             try migration.pause()
             migrating = migration.isPaused
         } catch {
             log.error("move: \(String(describing: error))")
         }
+        registerHotkeys()
     }
 
     private func finishMove() {
@@ -325,9 +382,6 @@ final class AppController: NSObject, NSApplicationDelegate {
         setupModel.refreshPermissions()
         if !setupModel.isComplete || CommandLine.arguments.contains("--setup") {
             setup.show()
-        }
-        if !settings.has(.loginItemChosen) && setupModel.isComplete {
-            setLoginItem(true)
         }
     }
 
@@ -371,7 +425,6 @@ final class AppController: NSObject, NSApplicationDelegate {
             download = nil
             menu.update()
             writeStatus()
-            if setupModel.isComplete && !settings.has(.loginItemChosen) { setLoginItem(true) }
         }
     }
 
@@ -384,6 +437,7 @@ final class AppController: NSObject, NSApplicationDelegate {
             do {
                 try await transcriber.load()
                 modelState = .loaded
+                setupProgressed()
             } catch {
                 log.error("\(String(describing: error))")
                 modelState = .failed

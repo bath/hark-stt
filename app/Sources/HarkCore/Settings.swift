@@ -5,6 +5,10 @@ import Foundation
 public struct HarkSettings: @unchecked Sendable {
     public enum Key: String, CaseIterable, Sendable {
         case soundPack, soundVolume, notchIsland, onboardingVersion, f5Key
+        /// The UserKeyMapping entries Hark added, as [source, destination] pairs.
+        case f5Entries
+        /// An input device name, or nil for the built-in mic.
+        case microphone
         /// The user (or the first run) has set Start at Login once; do not change it again.
         case loginItemChosen
     }
@@ -38,6 +42,25 @@ public struct HarkSettings: @unchecked Sendable {
     public var f5Key: Bool {
         get { defaults.object(forKey: Key.f5Key.rawValue) as? Bool ?? true }
         nonmutating set { defaults.set(newValue, forKey: Key.f5Key.rawValue) }
+    }
+
+    /// The key mapping entries Hark added and must remove again.
+    public var f5Entries: [KeyRemap] {
+        get {
+            (defaults.array(forKey: Key.f5Entries.rawValue) as? [[NSNumber]] ?? []).compactMap {
+                $0.count == 2 ? KeyRemap(source: $0[0].uint64Value, destination: $0[1].uint64Value) : nil
+            }
+        }
+        nonmutating set {
+            defaults.set(newValue.map { [NSNumber(value: $0.source), NSNumber(value: $0.destination)] },
+                         forKey: Key.f5Entries.rawValue)
+        }
+    }
+
+    /// The input device name the user chose, or nil for the built-in mic.
+    public var microphone: String? {
+        get { defaults.string(forKey: Key.microphone.rawValue) }
+        nonmutating set { defaults.set(newValue, forKey: Key.microphone.rawValue) }
     }
 
     /// The welcome card version the user has seen. 0 means none.

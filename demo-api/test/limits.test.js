@@ -44,6 +44,12 @@ test('each IP address gets a set number of clips per hour', async () => {
   assert.equal((await admit({ ...ok, seconds: 3, store, now: now + 3_600_000 })).ok, true);
 });
 
+test('short clips count as the 10 s Groq bills', async () => {
+  const store = memoryStore(), now = Date.UTC(2026, 9, 30, 12);
+  await admit({ ...ok, seconds: 2, store, now });
+  assert.equal(store.counts.get(`day:${Math.floor(now / 86_400_000)}`), 10);
+});
+
 test('the daily cap stops the demo for everyone', async () => {
   const store = memoryStore(), now = Date.UTC(2026, 9, 30, 12);
   store.counts.set(`day:${Math.floor(now / 86_400_000)}`, DAILY_SECONDS - 2);

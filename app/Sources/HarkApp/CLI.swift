@@ -108,9 +108,15 @@ extension CLI {
             FileHandle.standardError.write(Data("usage: Hark f5-key on|off\n".utf8))
             return 2
         }
-        HarkSettings().f5Key = choice == "on"
+        let settings = HarkSettings()
+        settings.f5Key = choice == "on"
         do {
-            if choice == "on" { try KeyMapper.system.apply() } else { try KeyMapper.system.remove() }
+            if choice == "on" {
+                settings.f5Entries = Array(Set(settings.f5Entries + (try KeyMapper.system.apply())))
+            } else {
+                try KeyMapper.system.remove(settings.f5Entries)
+                settings.f5Entries = []
+            }
         } catch {
             FileHandle.standardError.write(Data("Hark: hidutil failed: \(error)\n".utf8))
             return 1

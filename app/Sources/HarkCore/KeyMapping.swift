@@ -6,8 +6,9 @@ import Foundation
 /// launch (Hark starts at login), when a keyboard is connected, and removes
 /// it when Hark quits, so F5 never goes dead.
 ///
-/// The user's own UserKeyMapping entries are kept: Hark adds and removes only
-/// its own entries, and does not add one for a key the user already maps.
+/// The user's own UserKeyMapping entries are kept: Hark remembers the entries
+/// it added and removes only those, and does not add one for a key the user
+/// already maps.
 public struct KeyRemap: Sendable, Hashable {
     public var source: UInt64
     public var destination: UInt64
@@ -23,13 +24,7 @@ public enum KeyMapping {
     public static let f18: UInt64 = 0x7_0000_006D
     /// The dictation (microphone) key: consumer page 0x0C, Voice Command 0xCF.
     public static let dictationKey: UInt64 = 0xC_0000_00CF
-    /// F5 on the keyboard page, as the Karabiner rule mapped it.
-    public static let f5: UInt64 = 0x7_0000_003E
-
-    public static let hark = [
-        KeyRemap(source: dictationKey, destination: f18),
-        KeyRemap(source: f5, destination: f18),
-    ]
+    public static let hark = [KeyRemap(source: dictationKey, destination: f18)]
 
     /// Reads `hidutil property --get UserKeyMapping`: "(null)", or a property
     /// list of dictionaries with decimal numbers.
@@ -58,9 +53,9 @@ public enum KeyMapping {
         return current + hark.filter { !taken.contains($0.source) && !current.contains($0) }
     }
 
-    /// The user's entries without Hark's.
-    public static func removing(from current: [KeyRemap]) -> [KeyRemap] {
-        current.filter { !hark.contains($0) }
+    /// The current entries without the ones Hark added.
+    public static func removing(_ added: [KeyRemap], from current: [KeyRemap]) -> [KeyRemap] {
+        current.filter { !added.contains($0) }
     }
 
     /// True when the dictation key goes to F18.
@@ -92,17 +87,22 @@ public struct KeyMapper: Sendable {
         KeyMapping.parse(try run(["property", "--get", "UserKeyMapping"]))
     }
 
+    /// Adds Hark's entries and returns the ones it added, which the caller
+    /// keeps for `remove`. An entry that was already there is not Hark's to remove.
     /// - Parameter force: set the mapping even when it looks applied. A newly
     ///   connected keyboard may not have it yet.
-    public func apply(force: Bool = false) throws {
+    @discardableResult
+    public func apply(force: Bool = false) throws -> [KeyRemap] {
         let current = try current()
         let wanted = KeyMapping.adding(to: current)
         if force || wanted != current { _ = try run(["property", "--set", KeyMapping.json(wanted)]) }
+        return wanted.filter { !current.contains($0) }
     }
 
-    public func remove() throws {
+    /// Removes the entries Hark added, and nothing else.
+    public func remove(_ added: [KeyRemap]) throws {
         let current = try current()
-        let wanted = KeyMapping.removing(from: current)
+        let wanted = KeyMapping.removing(added, from: current)
         if wanted != current { _ = try run(["property", "--set", KeyMapping.json(wanted)]) }
     }
 

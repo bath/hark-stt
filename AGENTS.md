@@ -290,7 +290,7 @@ Release of Hark.app (the native app):
 1. Set `harkVersion` in `app/Sources/HarkCore/Version.swift` and merge to `main`.
 2. Tag `vX.Y.Z` on `main` and make a GitHub release from it (`gh release create vX.Y.Z --verify-tag`).
 3. Build, sign, notarize and attach the disk image. On a Mac with the "Developer ID Application" certificate and a notarytool profile: `HARK_SIGN_IDENTITY="Developer ID Application: …" HARK_NOTARY_PROFILE=hark app/scripts/release.sh --upload`. Or run the "Release Hark.app" workflow in GitHub Actions (its header lists the secrets). `--dry-run` does everything but notarization, with the local identity.
-4. In [bath/homebrew-tap](https://github.com/bath/homebrew-tap), copy `Casks/hark.rb` to `Casks/hark.rb` with the new `version` and the `sha256` the script printed. Run `brew audit --strict --cask bath/tap/hark`, and copy the result back here.
+4. With `--upload` the script also sets the cask's `version` and `sha256` in `Casks/hark.rb` here and in [bath/homebrew-tap](https://github.com/bath/homebrew-tap). Commit the file here, then run `brew update && brew audit --strict --cask bath/tap/hark`.
 
 The 🎙 Check for Updates… and `hark update --app` find the release by its `Hark-X.Y.Z.dmg` asset.
 

@@ -70,32 +70,40 @@ final class FakeHIDUtil: @unchecked Sendable {
 
     @Test func applyKeepsTheUsersOwnEntries() throws {
         let hid = FakeHIDUtil([capsToEscape])
-        try hid.mapper.apply()
+        #expect(try hid.mapper.apply() == KeyMapping.hark)
         #expect(hid.mapping == [capsToEscape] + KeyMapping.hark)
         #expect(hid.mapper.isApplied())
         // Applying again changes nothing, unless a new keyboard needs it.
         try hid.mapper.apply()
         #expect(hid.sets == 1)
-        try hid.mapper.apply(force: true)
+        #expect(try hid.mapper.apply(force: true).isEmpty)
         #expect(hid.sets == 2)
         #expect(hid.mapping == [capsToEscape] + KeyMapping.hark)
     }
 
     @Test func removeTakesOnlyHarksEntries() throws {
         let hid = FakeHIDUtil([capsToEscape])
-        try hid.mapper.apply()
-        try hid.mapper.remove()
+        let added = try hid.mapper.apply()
+        try hid.mapper.remove(added)
         #expect(hid.mapping == [capsToEscape])
         #expect(!hid.mapper.isApplied())
     }
 
+    @Test func anEntryTheUserAlreadyHadIsNotRemoved() throws {
+        let hid = FakeHIDUtil(KeyMapping.hark)
+        let added = try hid.mapper.apply()
+        #expect(added.isEmpty)
+        try hid.mapper.remove(added)
+        #expect(hid.mapping == KeyMapping.hark)
+    }
+
     @Test func aKeyTheUserAlreadyMapsIsLeftAlone() throws {
-        let users = KeyRemap(source: KeyMapping.f5, destination: 0x7_0000_0068) // F5 → F13
+        let users = KeyRemap(source: KeyMapping.dictationKey, destination: 0x7_0000_0068) // dictation → F13
         let hid = FakeHIDUtil([users])
-        try hid.mapper.apply()
-        #expect(hid.mapping.contains(users))
-        #expect(!hid.mapping.contains(KeyRemap(source: KeyMapping.f5, destination: KeyMapping.f18)))
-        try hid.mapper.remove()
+        let added = try hid.mapper.apply()
+        #expect(added.isEmpty)
+        #expect(hid.mapping == [users])
+        try hid.mapper.remove(added)
         #expect(hid.mapping == [users])
     }
 

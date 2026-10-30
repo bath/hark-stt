@@ -31,6 +31,12 @@ func freshDefaults() -> UserDefaults {
         #expect(again.notchIsland == false)
         #expect(again.onboardingVersion == 1)
     }
+
+    @Test func theKeyMappingEntriesHarkAddedAreKept() {
+        let defaults = freshDefaults()
+        HarkSettings(defaults).f5Entries = KeyMapping.hark
+        #expect(HarkSettings(defaults).f5Entries == KeyMapping.hark)
+    }
 }
 
 @Suite struct SoundLibraryTests {

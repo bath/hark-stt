@@ -243,13 +243,14 @@ private final class Machine {
             fail(DictationError.noSpeech)
             return
         }
+        // The transcript goes out first, so the app has it even when the paste fails.
+        output.yield(.transcript(text))
         do {
             try await paster.paste(text)
         } catch {
             fail(DictationError.paste)
             return
         }
-        output.yield(.transcript(text))
         output.yield(.timings(DictationTimings(
             pressToFirstBuffer: firstBufferAt - pressedAt,
             stopToMicOff: micOffAt - stoppedAt,
