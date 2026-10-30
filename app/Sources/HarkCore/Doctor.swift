@@ -99,8 +99,13 @@ public enum Doctor {
                : Check(id: id, title: title, ok: false, required: required, needsHuman: human, fix: fix, command: command)
         }
 
+        // Restarting Hark retries a failed download (it resumes) or load.
+        let restart = "osascript -e 'quit app id \"works.hark.Hark\"'; sleep 2; open \(app)"
         var model = (fix: "Open Hark. It downloads the model (574 MB) by itself.", command: "open \(app)")
-        if let progress = status?.modelProgress {
+        if status?.model == "failed" {
+            model = ("The model download or load failed. Restart Hark to try again; a download goes on from where it stopped.",
+                     restart)
+        } else if let progress = status?.modelProgress {
             model = ("Hark is downloading the model (\(Int(progress * 100)) %). Wait, then check again.",
                      "\(cli) doctor --json --wait 60")
         }
@@ -143,11 +148,12 @@ public enum Doctor {
                   fix: running ? "Optional; ⌥Space always works. Run the command to map the dictation key (F5) to Hark." : unknown,
                   command: running ? "\(cli) f5-key on" : nil, required: false),
             check("ready", "Hark is ready to dictate", status?.model == "loaded",
-                  fix: running
-                    ? "The model is not loaded yet (\(status?.model ?? "unknown")). Fix the checks above, "
-                      + "wait a few seconds, and check again."
-                    : unknown,
-                  command: running ? "\(cli) doctor --json --wait 15" : nil),
+                  fix: !running ? unknown
+                    : status?.model == "failed"
+                    ? "The model did not load. Restart Hark to try again."
+                    : "The model is not loaded yet (\(status?.model ?? "unknown")). Fix the checks above, "
+                      + "wait a few seconds, and check again.",
+                  command: !running ? nil : status?.model == "failed" ? restart : "\(cli) doctor --json --wait 15"),
         ]
     }
 

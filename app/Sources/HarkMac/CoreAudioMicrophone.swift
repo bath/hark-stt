@@ -89,7 +89,10 @@ public final class CoreAudioMicrophone: Microphone, @unchecked Sendable {
     }
 
     private func dropUnit() {
-        queue.async { self.unit = nil }
+        queue.async {
+            self.unit = nil
+            self.recording = false
+        }
     }
 
     private func onQueue<T: Sendable>(_ work: @escaping @Sendable () throws -> T) async throws -> T {

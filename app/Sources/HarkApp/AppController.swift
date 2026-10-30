@@ -25,12 +25,13 @@ final class AppController: NSObject, NSApplicationDelegate {
     private lazy var setup = SetupWindow(model: setupModel)
     private var download: Task<Void, Never>?
     private var keyboards: KeyboardWatcher?
+    // The commands run on their own: the Hammerspoon restart sleeps, and must
+    // not hold up launch or quit.
     private let migration = Migration { executable, arguments in
         let process = Process()
         process.executableURL = URL(fileURLWithPath: executable)
         process.arguments = arguments
         try? process.run()
-        process.waitUntilExit()
     }
     /// The old Hammerspoon Hark is paused until the first dictation here pastes.
     private var migrating = false
@@ -77,7 +78,11 @@ final class AppController: NSObject, NSApplicationDelegate {
         }
         writeStatus()
         statusTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [weak self] _ in
-            MainActor.assumeIsolated { self?.writeStatus() }
+            MainActor.assumeIsolated {
+                // `Hark f5-key` in another process can change the mapping.
+                self?.keyMappingApplied = KeyMapper.system.isApplied()
+                self?.writeStatus()
+            }
         }
         if CommandLine.arguments.contains("--preview") { preview() }
     }
