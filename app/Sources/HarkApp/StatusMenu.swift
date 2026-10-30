@@ -29,7 +29,7 @@ final class StatusMenu: NSObject, NSMenuDelegate {
         item.button?.title = icon
     }
 
-    /// Shows a short message next to the icon. The Notch Island takes this over.
+    /// Shows a short message next to the icon, when the Notch Island is off.
     func flash(_ message: String) {
         flashMessage = message
         flashTimer?.invalidate()
@@ -61,6 +61,8 @@ final class StatusMenu: NSObject, NSMenuDelegate {
         menu.addItem(disabled("Status: \(statusText)"))
         menu.addItem(action("Toggle Dictation", #selector(toggle)))
         menu.addItem(.separator())
+        menu.addItem(action("Notch Island", #selector(toggleIsland), checked: controller.settings.notchIsland))
+        menu.addItem(.separator())
         menu.addItem(disabled("Hark \(harkVersion)"))
         menu.addItem(.separator())
         menu.addItem(action("Quit Hark", #selector(quit), key: "q"))
@@ -82,5 +84,6 @@ final class StatusMenu: NSObject, NSMenuDelegate {
     }
 
     @objc private func toggle() { controller.press() }
+    @objc private func toggleIsland() { controller.setNotchIsland(!controller.settings.notchIsland) }
     @objc private func quit() { NSApp.terminate(nil) }
 }
