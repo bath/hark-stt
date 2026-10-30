@@ -396,6 +396,19 @@ h1 .mark { display: block; color: var(--ink-2); font-weight: 700; }
 .foot nav { display: flex; flex-wrap: wrap; gap: 8px 22px; }
 .foot strong { color: var(--ink); font-family: var(--display); font-weight: 800; font-size: 18px; margin-right: 8px; }
 
+/* Live demo under the island (issue #25): the consent note, then the text. */
+.demo-out { margin-top: 4px; margin-bottom: 8px; display: grid; justify-items: center; gap: 8px; text-align: center; }
+.demo-out[hidden] { display: none; }
+.demo-out p { margin: 0; max-width: 60ch; color: var(--ink-2); font-size: 14px; }
+.demo-text { min-height: 1.5em; max-width: 60ch; padding: 10px 14px; border: 1px solid var(--rule); border-radius: 10px;
+  background: var(--code-bg); color: var(--code-ink); font-size: 16px; }
+.demo-text:empty { display: none; }
+.demo-time { font: 13px/1.4 var(--mono); }
+.demo-ask { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.demo-ask button { font: 600 14px var(--text); border-radius: 999px; padding: 8px 16px; cursor: pointer;
+  border: 1px solid var(--rule); background: transparent; color: var(--ink); }
+.demo-ask button.go { background: var(--btn); color: var(--btn-ink); border-color: var(--btn); }
+
 /* Responsive */
 /* Below this width the open island (up to 382 px) reaches the nav, so the
    header sits under the notch, as a Mac menu bar keeps clear of it. */
@@ -470,6 +483,15 @@ h1 .mark { display: block; color: var(--ink-2); font-weight: 700; }
     <a href="https://github.com/bath/hark-stt">GitHub</a>
   </nav>
 </header>
+<section class="wrap demo-out" data-demo hidden aria-live="polite">
+  <p data-demo-note></p>
+  <div class="demo-ask" data-demo-ask hidden>
+    <button class="go" type="button" data-demo-yes>Use my microphone</button>
+    <button type="button" data-demo-no>Not now</button>
+  </div>
+  <div class="demo-text" data-demo-text></div>
+  <p class="demo-time" data-demo-time></p>
+</section>
 
 <main id="main">
   <section class="wrap hero" aria-labelledby="title">
@@ -894,10 +916,119 @@ h1 .mark { display: block; color: var(--ink-2); font-weight: 700; }
     }, 1000 / 30);
     later(stop, AUTO_STOP);
   }
+  /* Live demo (issue #25): when api.hark.works has it on, a click records
+     the visitor's voice (up to 15 s) and sends it to Groq's
+     whisper-large-v3-turbo, the model the app runs on the Mac. The island
+     says so before the mic starts, because the app never sends audio
+     anywhere. Nothing is stored. When the demo is off, a click plays the
+     simulated dictation above. */
+  var DEMO_API = 'https://api.hark.works/api/transcribe', LIVE_MAX = 15;
+  var demo = { on: false, asked: false, stream: null, ctx: null, node: null, chunks: [], rate: 48000, stopTimer: 0 };
+  var out = document.querySelector('[data-demo]');
+  var outPart = function (s) { return out.querySelector(s); };
+  var note = outPart('[data-demo-note]'), ask = outPart('[data-demo-ask]');
+  var said = outPart('[data-demo-text]'), timing = outPart('[data-demo-time]');
+  if (window.fetch && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+    fetch(DEMO_API).then(function (r) { return r.json(); }).then(function (d) {
+      demo.on = d.enabled === true;
+      if (demo.on) island.setAttribute('aria-label', 'Try live dictation: click to start, click again to stop');
+    }, function () {});
+  }
+  function tell(text, time) {
+    out.hidden = false;
+    note.textContent = text || '';
+    if (time !== undefined) timing.textContent = time;
+  }
+  function askFirst() {
+    tell('This demo sends your voice to a server (Groq) to turn it into text, and nothing is stored. ' +
+      'The Hark app never does this: on your Mac, your voice stays on your Mac.');
+    ask.hidden = false;
+  }
+  outPart('[data-demo-yes]').addEventListener('click', function () { demo.asked = true; ask.hidden = true; startLive(); });
+  outPart('[data-demo-no]').addEventListener('click', function () { ask.hidden = true; out.hidden = true; });
+
+  function startLive() {
+    pending.forEach(clearTimeout); pending = []; clearInterval(speech);
+    navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: false, noiseSuppression: false, autoGainControl: false } })
+      .then(function (stream) {
+        var Ctx = window.AudioContext || window.webkitAudioContext;
+        demo.stream = stream; demo.ctx = new Ctx(); demo.rate = demo.ctx.sampleRate; demo.chunks = [];
+        var source = demo.ctx.createMediaStreamSource(stream);
+        demo.node = demo.ctx.createScriptProcessor(2048, 1, 1);
+        demo.node.onaudioprocess = function (e) {
+          var input = e.inputBuffer.getChannelData(0), sum = 0;
+          demo.chunks.push(new Float32Array(input));
+          for (var i = 0; i < input.length; i++) sum += input[i] * input[i];
+          level(Math.sqrt(sum / input.length));
+        };
+        source.connect(demo.node); demo.node.connect(demo.ctx.destination);
+        tell('Listening. Click the island to stop.', '');
+        said.textContent = '';
+        setMode('recording', 'Listening');
+        demo.stopTimer = setTimeout(stopLive, LIVE_MAX * 1000);
+      }, function () { tell('The browser did not allow the microphone, so here is the simulated dictation.'); start(); });
+  }
+  /* 16 kHz mono 16-bit WAV, what Whisper reads. */
+  function wav16k(chunks, rate) {
+    var length = chunks.reduce(function (n, c) { return n + c.length; }, 0), all = new Float32Array(length), at = 0;
+    chunks.forEach(function (c) { all.set(c, at); at += c.length; });
+    var ratio = rate / 16000, frames = Math.floor(length / ratio);
+    var view = new DataView(new ArrayBuffer(44 + frames * 2));
+    var put = function (o, s) { for (var i = 0; i < s.length; i++) view.setUint8(o + i, s.charCodeAt(i)); };
+    put(0, 'RIFF'); view.setUint32(4, 36 + frames * 2, true); put(8, 'WAVE'); put(12, 'fmt ');
+    view.setUint32(16, 16, true); view.setUint16(20, 1, true); view.setUint16(22, 1, true);
+    view.setUint32(24, 16000, true); view.setUint32(28, 32000, true); view.setUint16(32, 2, true); view.setUint16(34, 16, true);
+    put(36, 'data'); view.setUint32(40, frames * 2, true);
+    for (var f = 0; f < frames; f++) {
+      /* Average the source samples this output sample covers: a simple low-pass. */
+      var from = Math.floor(f * ratio), to = Math.min(length, Math.floor((f + 1) * ratio)), sum = 0;
+      for (var k = from; k < to; k++) sum += all[k];
+      var x = Math.max(-1, Math.min(1, sum / Math.max(1, to - from)));
+      view.setInt16(44 + f * 2, x < 0 ? x * 32768 : x * 32767, true);
+    }
+    return { blob: new Blob([view], { type: 'audio/wav' }), seconds: frames / 16000 };
+  }
+  function stopLive() {
+    clearTimeout(demo.stopTimer);
+    if (demo.node) { demo.node.disconnect(); demo.node.onaudioprocess = null; }
+    if (demo.stream) demo.stream.getTracks().forEach(function (t) { t.stop(); });
+    if (demo.ctx) demo.ctx.close();
+    var clip = wav16k(demo.chunks, demo.rate);
+    demo.stream = demo.ctx = demo.node = null; demo.chunks = [];
+    setMode('transcribing', 'Transcribing');
+    tell('Transcribing on the server…');
+    var sent = performance.now();
+    fetch(DEMO_API, { method: 'POST', headers: { 'Content-Type': 'audio/wav' }, body: clip.blob })
+      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+      .then(function (res) {
+        var total = Math.round(performance.now() - sent);
+        if (!res.ok) throw new Error(res.d.error || 'failed');
+        setMode('done', 'Pasted');
+        later(function () { setMode('idle', ''); }, HOLD_DONE);
+        said.textContent = res.d.text || '(no speech heard)';
+        tell('In the app, this text lands where your cursor is, and your voice never leaves your Mac.',
+          'Whisper on the server: ' + res.d.server_ms + ' ms · upload and network: ' + Math.max(0, total - res.d.server_ms) +
+          ' ms (the app has no network step)');
+        if (window.posthog) {
+          window.posthog.capture('live_demo_transcribed', { audio_seconds: res.d.audio_seconds, server_ms: res.d.server_ms, total_ms: total });
+        }
+      })
+      .catch(function (e) {
+        setMode('idle', '');
+        var busy = /rate_limited|daily_cap/.test(e.message);
+        tell(busy ? 'The live demo is busy right now. Try again later, or install Hark: it has no limits.'
+          : 'The live demo did not work this time. Try again in a moment.', '');
+        if (window.posthog) window.posthog.capture('live_demo_failed', { error: e.message });
+      });
+  }
+
   /* Like F5: a press while recording stops; a press while Transcribing or Pasted shows does nothing. */
   island.addEventListener('click', function () {
-    if (st.mode === 'recording') stop();
-    else if (st.mode === 'idle') start();
+    if (st.mode === 'recording') { if (demo.stream) stopLive(); else stop(); return; }
+    if (st.mode !== 'idle') return;
+    if (!demo.on) start();
+    else if (demo.asked) startLive();
+    else askFirst();
   });
   draw(now());
   if (!reduce.matches) setTimeout(function () { if (st.mode === 'idle') start(); }, 900);
