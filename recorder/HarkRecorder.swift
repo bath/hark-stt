@@ -131,6 +131,45 @@ private func deviceIsRunning(_ device: AudioDevice) -> Bool {
     return running != 0
 }
 
+// The first buffer arrives one I/O cycle after the device starts. 64 frames is
+// 1.3 ms at 48 kHz, against 10.7 ms for the default 512 (issue #24). The device
+// may not go that low, so ask for the smallest size it allows above 64. A
+// failure keeps the default size.
+private let preferredBufferFrames: UInt32 = 64
+
+private func requestSmallBuffer(audioUnit: AudioUnit, device: AudioDevice) -> UInt32 {
+    var range = AudioValueRange()
+    var rangeSize = UInt32(MemoryLayout<AudioValueRange>.size)
+    var rangeAddress = AudioObjectPropertyAddress(
+        mSelector: kAudioDevicePropertyBufferFrameSizeRange,
+        mScope: kAudioObjectPropertyScopeGlobal,
+        mElement: kAudioObjectPropertyElementMain
+    )
+    var frames = preferredBufferFrames
+    if AudioObjectGetPropertyData(device.id, &rangeAddress, 0, nil, &rangeSize, &range) == noErr {
+        frames = UInt32(max(range.mMinimum, min(range.mMaximum, Double(frames))))
+    }
+    _ = AudioUnitSetProperty(
+        audioUnit,
+        kAudioDevicePropertyBufferFrameSize,
+        kAudioUnitScope_Global,
+        0,
+        &frames,
+        UInt32(MemoryLayout<UInt32>.size)
+    )
+    var actual: UInt32 = 0
+    var actualSize = UInt32(MemoryLayout<UInt32>.size)
+    var sizeAddress = AudioObjectPropertyAddress(
+        mSelector: kAudioDevicePropertyBufferFrameSize,
+        mScope: kAudioObjectPropertyScopeGlobal,
+        mElement: kAudioObjectPropertyElementMain
+    )
+    guard AudioObjectGetPropertyData(device.id, &sizeAddress, 0, nil, &actualSize, &actual) == noErr else {
+        return 0
+    }
+    return actual
+}
+
 private func monotonicNs() -> UInt64 {
     DispatchTime.now().uptimeNanoseconds
 }
@@ -196,6 +235,7 @@ private final class ColdRecorder: @unchecked Sendable {
     private let device: AudioDevice
     private let audioUnit: AudioUnit
     private let sampleRate: Int
+    private let bufferFrames: UInt32
     private let maximumFrames: UInt32
     private let renderStorage: UnsafeMutableRawPointer
     private let renderBuffers: UnsafeMutableAudioBufferListPointer
@@ -264,6 +304,8 @@ private final class ColdRecorder: @unchecked Sendable {
             ),
             "select input device"
         )
+
+        bufferFrames = requestSmallBuffer(audioUnit: audioUnit, device: device)
 
         var deviceFormat = AudioStreamBasicDescription()
         var formatSize = UInt32(MemoryLayout<AudioStreamBasicDescription>.size)
@@ -346,6 +388,7 @@ private final class ColdRecorder: @unchecked Sendable {
 
         emit("ready", [
             "backend": "AUHAL",
+            "buffer_frames": bufferFrames,
             "device": device.name,
             "microphone_active": deviceIsRunning(device),
             "sample_rate": sampleRate,
