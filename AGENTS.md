@@ -151,6 +151,7 @@ This keeps the Homebrew apps and the model. The command prints how to remove tho
 | `install.sh` | The installer. Must keep working when piped from curl. |
 | `karabiner/hark.json` | The F5 → F18 rule. |
 | `docs/` | The website (GitHub Pages) and the README images. |
+| `app/` | The native Hark.app in Swift (issue #30), being built. A Swift package with no Xcode project. `HarkCore` has the `DictationEngine` and every rule that needs no macOS API; `HarkMac` has the Core Audio mic, whisper.cpp and paste; `hark-dictate` dictates from the terminal. |
 
 Tests:
 
@@ -158,6 +159,17 @@ Tests:
 bash tests/install-streaming.sh   # installer, with Homebrew, curl and launchctl mocked
 bash tests/hark-cli.sh            # doctor report shape, uninstall safety
 ```
+
+The Swift package (from `app/`; the first build downloads whisper.cpp, about 66 MB):
+
+```sh
+swift test                                          # engine and adapters, with fakes; never touches the mic
+HARK_SLOW_TESTS=1 swift test -c release --filter WhisperSlowTests   # real whisper.cpp and model
+swift run -c release hark-dictate                   # Return to start and stop; prints text and timings
+swift run -c release hark-dictate --file clip.wav   # Whisper time for a 16 kHz mono WAV
+```
+
+The terminal app needs the Microphone permission for `hark-dictate`.
 
 The Lua tests run inside Hammerspoon with a fake `hs`, so they do not touch the live setup. Run them one at a time:
 
