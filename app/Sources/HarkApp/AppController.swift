@@ -25,6 +25,15 @@ final class AppController: NSObject, NSApplicationDelegate {
     private lazy var setup = SetupWindow(model: setupModel)
     private var download: Task<Void, Never>?
     private var keyboards: KeyboardWatcher?
+    private let migration = Migration { executable, arguments in
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: executable)
+        process.arguments = arguments
+        try? process.run()
+        process.waitUntilExit()
+    }
+    /// The old Hammerspoon Hark is paused until the first dictation here pastes.
+    private var migrating = false
     private var keyMappingApplied = false
     private var engine: DictationEngine!
     private var menu: StatusMenu!
@@ -45,6 +54,7 @@ final class AppController: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        moveFromHammerspoon()
         engine = DictationEngine(microphone: CoreAudioMicrophone(), transcriber: slot, paster: PasteboardPaster())
         menu = StatusMenu(controller: self)
         hotkeys = Hotkeys { [weak self] in self?.press() }
@@ -102,6 +112,8 @@ final class AppController: NSObject, NSApplicationDelegate {
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         hotkeys.unregister()
         statusTimer?.invalidate()
+        // Quit before the move finished: give the user their old Hark back.
+        if migrating { try? migration.resume() }
         // F18 does nothing without Hark, so give F5 back to macOS.
         try? KeyMapper.system.remove()
         try? FileManager.default.removeItem(at: AppStatus.file)
@@ -242,7 +254,9 @@ final class AppController: NSObject, NSApplicationDelegate {
             switch new {
             case .recording: sounds.play(.start)
             case .transcribing: sounds.play(.stop)
-            case .done: sounds.play(.done)
+            case .done:
+                sounds.play(.done)
+                if migrating { finishMove() }
             case .error: sounds.play(.error)
             case .idle: break
             }
@@ -260,6 +274,41 @@ final class AppController: NSObject, NSApplicationDelegate {
         case let .timings(timings):
             lastTimings = timings
             log.info("first buffer \(timings.pressToFirstBuffer), whisper \(timings.whisper), stop to text \(timings.stopToText)")
+        }
+    }
+
+    // MARK: - Move from Hammerspoon
+
+    private func moveFromHammerspoon() {
+        guard migration.hasLegacyInstall else { return }
+        let old = UserDefaults(suiteName: "org.hammerspoon.Hammerspoon")?.dictionaryRepresentation() ?? [:]
+        Migration.importSettings(from: old, into: settings)
+        do {
+            try migration.pause()
+            migrating = migration.isPaused
+        } catch {
+            log.error("move: \(String(describing: error))")
+        }
+    }
+
+    private func finishMove() {
+        migrating = false
+        do {
+            try migration.finish()
+        } catch {
+            log.error("move: \(String(describing: error))")
+            return
+        }
+        // After the paste has landed, so the alert does not take the focus mid-dictation.
+        Timer.scheduledTimer(withTimeInterval: 2, repeats: false) { _ in
+            MainActor.assumeIsolated {
+                let alert = NSAlert()
+                alert.messageText = "Hark moved to the app"
+                alert.informativeText = "Your sounds, settings and model came along, and the Hammerspoon version is removed. "
+                    + Migration.leftovers
+                NSApp.activate()
+                alert.runModal()
+            }
         }
     }
 

@@ -2,7 +2,8 @@
 """hark: check, fix and remove a Hark install.
 
   hark doctor [--json] [--wait SECONDS]   check every part of the setup
-  hark update [--json]                    update Hark to the latest release
+  hark update [--json] [--app]            update Hark to the latest release; --app installs
+                                          Hark.app, which moves this install to the app
   hark setup [--json] [--no-karabiner]    install Hark's files for this user (after
                                           `brew install` or `brew upgrade`)
   hark open-settings PANE                 open the System Settings pane a fix needs
@@ -44,6 +45,8 @@ INSTALL = "curl -fsSL https://raw.githubusercontent.com/bath/hark-stt/main/insta
 INSTALLER_URLS = os.environ.get("HARK_INSTALLER_URLS",
                                 "https://hark.works/install.sh "
                                 "https://raw.githubusercontent.com/bath/hark-stt/main/install.sh").split()
+RELEASES_URL = os.environ.get("HARK_RELEASES_URL", "https://api.github.com/repos/bath/hark-stt/releases/latest")
+APP = os.path.join(APPS, "Hark.app")
 CLI = os.path.abspath(__file__)
 # Homebrew installs install.sh next to bin/; a curl install does not.
 BUNDLED_INSTALLER = os.path.join(os.path.dirname(os.path.dirname(CLI)), "install.sh")
@@ -299,7 +302,86 @@ def run_installer(args):
         return subprocess.run(["/bin/bash", f.name] + args).returncode
 
 
+def latest_app():
+    """(version, disk image URL) of the latest release with Hark.app, or None."""
+    request = urllib.request.Request(RELEASES_URL, headers={
+        "Accept": "application/vnd.github+json", "User-Agent": "hark/" + VERSION})
+    try:
+        with urllib.request.urlopen(request, timeout=15) as response:
+            release = json.load(response)
+    except (OSError, ValueError):
+        return None
+    for asset in release.get("assets", []):
+        name = asset.get("name", "")
+        if name.startswith("Hark") and name.endswith(".dmg"):
+            return release.get("tag_name", "").lstrip("v"), asset["browser_download_url"]
+    return None
+
+
+def install_app(url, out):
+    """Copies Hark.app from the disk image to Applications and opens it. On its
+    first run the app imports the settings, reuses the model, and removes this
+    install after its first dictation."""
+    work = tempfile.mkdtemp(prefix="hark-app-")
+    image, mount = os.path.join(work, "Hark.dmg"), os.path.join(work, "mount")
+    try:
+        print("==> Downloading Hark.app", file=out, flush=True)
+        with urllib.request.urlopen(url, timeout=120) as response, open(image, "wb") as f:
+            shutil.copyfileobj(response, f)
+        os.makedirs(mount)
+        if not run("hdiutil", "attach", "-nobrowse", "-quiet", "-mountpoint", mount, image):
+            print("hark: could not open the Hark.app disk image", file=sys.stderr)
+            return 1
+        try:
+            if os.path.isdir(APP):
+                shutil.rmtree(APP)
+            if not run("ditto", os.path.join(mount, "Hark.app"), APP):
+                print("hark: could not copy Hark.app to %s" % APPS, file=sys.stderr)
+                return 1
+        finally:
+            run("hdiutil", "detach", "-quiet", mount)
+    except OSError as error:
+        print("hark: %s" % error, file=sys.stderr)
+        return 1
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
+    run("open", APP)
+    print("Hark.app is in %s and open. It keeps your sounds, settings and model, and removes this "
+          "Hammerspoon install after its first dictation. Check it with: %s/Contents/MacOS/Hark doctor --json"
+          % (APPS, APP), file=out)
+    return 0
+
+
+def offer_app(args):
+    """An old install and a release with Hark.app: offer the move. Returns an
+    exit code when it handled the update, or None to update this install."""
+    if os.path.isdir(APP) or (installed_version() is None and "--app" not in args):
+        return None
+    app = latest_app()
+    out = sys.stderr if "--json" in args else sys.stdout
+    if app is None:
+        if "--app" in args:
+            print("hark: no release has Hark.app yet", file=sys.stderr)
+            return 1
+        return None
+    version, url = app
+    if "--app" in args:
+        return install_app(url, out)
+    if "--json" not in args and sys.stdin.isatty():
+        answer = input("Hark is now a Mac app (Hark.app %s): no Hammerspoon, Karabiner or Homebrew needed. "
+                       "Install it and move to it? [Y/n] " % version)
+        if answer.strip().lower() in ("", "y", "yes"):
+            return install_app(url, out)
+        return None
+    print("hark: Hark.app %s is available. Run `hark update --app` to install it and move to it." % version,
+          file=sys.stderr)
+    return None
+
+
 def update(args):
+    moved = offer_app(args)
+    if moved is not None:
+        return moved
     flags = [a for a in args if a == "--json"]
     # Keep the user's hotkey choice: no Karabiner rule file means they chose ⌥Space.
     if installed_version() is not None and not os.path.exists(KARABINER_ASSET):
