@@ -181,3 +181,17 @@ Release:
 1. Set the new `VERSION` in `hark.lua` and `bin/hark`, and merge to `main`.
 2. Tag `vX.Y.Z` on `main` and make a GitHub release from the tag (`gh release create vX.Y.Z --verify-tag`). The 🎙 menu reads `releases/latest`, so a tag without a release is not offered.
 3. In [bath/homebrew-tap](https://github.com/bath/homebrew-tap), set the formula's `url` to the new tag and its `sha256` to the hash of that tarball. Run `brew audit --strict bath/tap/hark`. Copy the formula to `Formula/hark.rb` here.
+
+## Agent skills
+
+### Issue tracker
+
+GitHub Issues on `bath/hark-stt`, through the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five default labels: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `CONTEXT.md` and `docs/adr/` at the repo root, made when needed. See `docs/agents/domain.md`.
