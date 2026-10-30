@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Hark: better, private dictation for your Mac</title>
-<meta name="description" content="Hark is better, private dictation for macOS: more private, more accurate and faster than the dictation built into your Mac. Free and open source. Press F5, talk, press F5 again. Whisper turns your speech into text on your Mac and pastes it where your cursor is, in any app. No account, no telemetry.">
+<meta name="description" content="Hark is free, open-source dictation for macOS. It is more private, more accurate and faster than the dictation built into your Mac. Press F5, talk, press F5 again. Whisper turns your speech into text on your Mac and pastes it where your cursor is, in any app. No account, no telemetry.">
 <link rel="canonical" href="https://hark.works/">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="alternate" type="text/plain" href="llms.txt" title="LLM-readable summary">
@@ -17,12 +17,12 @@
 <meta property="og:site_name" content="Hark">
 <meta property="og:url" content="https://hark.works/">
 <meta property="og:title" content="Hark. Better, private dictation for your Mac.">
-<meta property="og:description" content="Private, accurate and fast. Press F5, talk, press F5 again. Whisper runs on your Mac and pastes the text where your cursor is, in any app. Free, MIT license.">
+<meta property="og:description" content="Hark is private, accurate and fast dictation for your Mac. Press F5, talk, press F5 again. Whisper runs on your Mac and pastes the text where your cursor is, in any app. Free, MIT license.">
 <meta property="og:image" content="https://hark.works/hark-demo-poster.png">
 <meta property="og:image:alt" content="The MacBook notch grows into a black pill while you talk, then shows Transcribing and Pasted.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Hark. Better, private dictation for your Mac.">
-<meta name="twitter:description" content="Private, accurate and fast. Press F5, talk, press F5 again. Whisper runs on your Mac and pastes the text where your cursor is, in any app. Free, MIT license.">
+<meta name="twitter:description" content="Hark is private, accurate and fast dictation for your Mac. Press F5, talk, press F5 again. Whisper runs on your Mac and pastes the text where your cursor is, in any app. Free, MIT license.">
 <meta name="twitter:image" content="https://hark.works/hark-demo-poster.png">
 <meta name="twitter:image:alt" content="The MacBook notch grows into a black pill while you talk, then shows Transcribing and Pasted.">
 
@@ -36,7 +36,7 @@
   "@type": ["SoftwareApplication", "SoftwareSourceCode"],
   "name": "Hark",
   "alternateName": "hark-stt",
-  "description": "Better, private dictation for macOS: more private, more accurate and faster than built-in Mac dictation. Press F5, talk, press F5 again. Whisper large-v3-turbo runs locally through whisper.cpp and pastes the text where your cursor is, in any app.",
+  "description": "Free, open-source dictation for macOS. It is more private, more accurate and faster than the dictation built into the Mac. Press F5, talk, press F5 again. Whisper large-v3-turbo runs locally through whisper.cpp and pastes the text where your cursor is, in any app.",
   "url": "https://hark.works/",
   "image": "https://hark.works/hark-demo-poster.png",
   "operatingSystem": "macOS",
@@ -507,9 +507,9 @@ h1 .mark { display: block; color: var(--ink-2); font-weight: 700; }
       <h1 id="title"><span class="mark">Hark.</span> Better, private dictation for your Mac.</h1>
       <p class="lede">Press <kbd>F5</kbd>, talk, press <kbd>F5</kbd> again. Whisper turns your speech into text on your Mac and pastes it where your cursor is, in any app.</p>
       <ul class="facts">
-        <li>Private: nothing leaves your Mac</li>
-        <li>Accurate: Whisper large-v3-turbo</li>
-        <li>Fast: text in about 0.3 s</li>
+        <li>Your voice never leaves your Mac</li>
+        <li>Whisper large-v3-turbo writes the text</li>
+        <li>The text is in about 0.3 s after you stop</li>
       </ul>
       <p class="agent-note">If you are an AI agent, read <a href="https://github.com/bath/hark-stt/blob/main/AGENTS.md">AGENTS.md</a> and follow it step by step. <a href="llms.txt">llms.txt</a> has a plain-text summary of this page.</p>
     </div>
@@ -518,7 +518,7 @@ h1 .mark { display: block; color: var(--ink-2); font-weight: 700; }
       <video id="demo" autoplay muted loop playsinline poster="hark-demo-poster.png" src="hark-demo.mp4" aria-label="Demo: the user presses F5 and talks. The MacBook notch grows into a black pill with a red dot, a timer and voice bars. Then it shows Transcribing, then Pasted, and the text appears at the cursor."></video>
       <img class="still" src="hark-demo-poster.png" loading="lazy" alt="Hark on a MacBook. The notch has grown into a black pill with a red dot, a timer and voice bars.">
       <figcaption>
-        <span>F5, talk, F5. The text lands at the cursor. <a href="hark-demo.mp4">Open the video</a></span>
+        <span>Press F5, talk, press F5 again. Hark pastes the text at the cursor. <a href="hark-demo.mp4">Open the video</a></span>
         <button class="vid-toggle" type="button" aria-controls="demo">Pause</button>
       </figcaption>
     </figure>
@@ -528,12 +528,12 @@ h1 .mark { display: block; color: var(--ink-2); font-weight: 700; }
     <div class="sec-grid">
       <div class="sec-head">
         <h2 id="why-h">Better than your Mac's built‑in dictation</h2>
-        <p>The dictation that comes with macOS mishears words, and you cannot tell where your voice goes. Hark fixes the three things that matter.</p>
+        <p>The dictation that comes with macOS often mishears names and technical words, and for some languages and settings it sends your voice to Apple. Hark keeps everything on your Mac.</p>
       </div>
       <div class="details pillars">
         <div class="detail">
           <h3>Private</h3>
-          <p>Your voice never leaves your Mac. Not to Apple, not to us, not to anyone. No account and no telemetry. The code is open, so you can check.</p>
+          <p>Your voice never leaves your Mac. Hark has no account and no telemetry, and the code is open, so you can check.</p>
         </div>
         <div class="detail">
           <h3>Accurate</h3>
@@ -560,7 +560,7 @@ h1 .mark { display: block; color: var(--ink-2); font-weight: 700; }
           <div>
           <span class="tag">Recommended</span>
           <h3>Download Hark.app</h3>
-          <p>Open it, click Allow for the microphone, and turn on one Accessibility switch. That is all.</p>
+          <p>Open it, click Allow for the microphone, and turn on one Accessibility switch.</p>
           </div>
           <div>
           <a class="download" data-app-download href="https://github.com/bath/hark-stt/releases/latest">Download Hark.app</a>
@@ -647,7 +647,7 @@ h1 .mark { display: block; color: var(--ink-2); font-weight: 700; }
           <div>
             <span class="n">3</span>
             <h3>The text appears at your cursor</h3>
-            <p>A green check and Pasted. This works in any app. Your last transcript stays on the clipboard, so <kbd>⌘V</kbd> pastes it again.</p>
+            <p>The pill shows a green check and Pasted, and the text is at your cursor, in any app. Your last transcript stays on the clipboard, so <kbd>⌘V</kbd> pastes it again.</p>
           </div>
         </li>
       </ol>
@@ -668,7 +668,7 @@ h1 .mark { display: block; color: var(--ink-2); font-weight: 700; }
         <dl class="spec">
           <div>
             <dt>Network</dt>
-            <dd>Your audio and text go only to 127.0.0.1. The installer downloads the model (about 550 MB) from Hugging Face once. Hark asks GitHub for the latest version only when you click Check for Updates.</dd>
+            <dd>Hark sends your audio and text only to a server on your own Mac (127.0.0.1). The installer downloads the model (574 MB) from Hugging Face once. Hark asks GitHub for the latest version only when you click Check for Updates.</dd>
           </div>
           <div>
             <dt>Model server</dt>
@@ -699,11 +699,11 @@ h1 .mark { display: block; color: var(--ink-2); font-weight: 700; }
         </div>
         <div class="detail">
           <h3>Sounds</h3>
-          <p>26 sound packs, each with a start, stop, pasted and error sound. 23 are generated and 3 use macOS system sounds. The default pack is Pop. Choose a pack or turn sounds off in the 🎙 menu in the menu bar.</p>
+          <p>Hark has 26 sound packs, each with a start, stop, pasted and error sound. 23 are generated and 3 use macOS system sounds. The default pack is Pop. Choose a pack or turn sounds off in the 🎙 menu in the menu bar.</p>
         </div>
         <div class="detail">
           <h3>Two keys</h3>
-          <p><kbd>F5</kbd> or <kbd>⌥Space</kbd> starts and stops dictation. <span class="old-only">F5 needs Karabiner-Elements, because macOS sends the dictation key as a special event.</span><span class="app-only">In Hark.app, F5 needs nothing extra: the app maps the key itself.</span></p>
+          <p><kbd>F5</kbd> or <kbd>⌥Space</kbd> starts and stops dictation. <span class="old-only">F5 needs Karabiner-Elements, because macOS sends the dictation key as a special event.</span><span class="app-only">In Hark.app, F5 needs nothing extra. The app maps the key itself.</span></p>
         </div>
         <div class="detail">
           <h3>Clipboard</h3>
@@ -1067,7 +1067,7 @@ h1 .mark { display: block; color: var(--ink-2); font-weight: 700; }
         setMode('done', 'Pasted');
         later(function () { setMode('idle', ''); }, HOLD_DONE);
         said.textContent = res.d.text || '(no speech heard)';
-        tell('In the app, this text lands where your cursor is, and your voice never leaves your Mac.',
+        tell('In the app, Hark pastes this text at your cursor, and your voice never leaves your Mac.',
           'Whisper on the server: ' + res.d.server_ms + ' ms · upload and network: ' + Math.max(0, total - res.d.server_ms) +
           ' ms (the app has no network step)');
         if (window.posthog) {
@@ -1077,7 +1077,7 @@ h1 .mark { display: block; color: var(--ink-2); font-weight: 700; }
       .catch(function (e) {
         setMode('idle', '');
         var busy = /rate_limited|daily_cap/.test(e.message);
-        tell(busy ? 'The live demo is busy right now. Try again later, or install Hark: it has no limits.'
+        tell(busy ? 'The live demo is busy right now. Try again later, or install Hark, which has no limits.'
           : 'The live demo did not work this time. Try again in a moment.', '');
         if (window.posthog) window.posthog.capture('live_demo_failed', { error: e.message });
       });
