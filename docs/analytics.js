@@ -7,7 +7,7 @@
    which install command was copied, which sections were seen, and what the
    demo video and island did. */
 (function () {
-  var POSTHOG_KEY = '';
+  var POSTHOG_KEY = 'phc_D2xNPh57Rr4cNnrtXTL8CM7ZMiJFutgjQcsxy9awvofn';
   var POSTHOG_HOST = 'https://us.i.posthog.com';
   if (!POSTHOG_KEY) return;
 
