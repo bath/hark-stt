@@ -19,8 +19,6 @@ public enum TranscriberError: Error, CustomStringConvertible {
 /// whisper.cpp in this process, on Metal. The model is loaded once and kept.
 /// Audio comes in memory; there is no WAV file, server or HTTP.
 public final class WhisperTranscriber: Transcriber, @unchecked Sendable {
-    public static let defaultModelName = "ggml-large-v3-turbo-q5_0.bin"
-
     private let modelPath: String
     private let language: String
     private let threads: Int32

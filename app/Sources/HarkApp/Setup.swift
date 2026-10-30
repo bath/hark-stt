@@ -53,6 +53,14 @@ final class SetupWindow {
             window.styleMask = [.titled, .closable]
             window.isReleasedWhenClosed = false
             window.center()
+            // The title bar's close button does not call close(), so stop the poll here too.
+            NotificationCenter.default.addObserver(forName: NSWindow.willCloseNotification, object: window, queue: .main) {
+                [weak self] _ in
+                MainActor.assumeIsolated {
+                    self?.poll?.invalidate()
+                    self?.poll = nil
+                }
+            }
             self.window = window
         }
         NSApp.activate()

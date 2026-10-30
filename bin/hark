@@ -355,7 +355,9 @@ def install_app(url, out):
 def offer_app(args):
     """An old install and a release with Hark.app: offer the move. Returns an
     exit code when it handled the update, or None to update this install."""
-    if os.path.isdir(APP) or (installed_version() is None and "--app" not in args):
+    # --app installs or replaces Hark.app. Without it, only an old install
+    # that has no app yet hears about the app.
+    if "--app" not in args and (os.path.isdir(APP) or installed_version() is None):
         return None
     app = latest_app()
     out = sys.stderr if "--json" in args else sys.stdout

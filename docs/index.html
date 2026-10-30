@@ -742,7 +742,8 @@ h1 .mark { display: block; color: var(--ink-2); font-weight: 700; }
             <p>Hark maps the dictation key (F5) to itself with no driver and no password, and gives it back when it quits. Turn it off in the 🎙 menu; ⌥Space always works.</p>
           </li>
         </ol>
-        <p class="app-only">Check Hark.app with <code>/Applications/Hark.app/Contents/MacOS/Hark doctor</code>. The steps below are for the Hammerspoon version.</p>
+        <p class="app-only">Check Hark.app with <code>/Applications/Hark.app/Contents/MacOS/Hark doctor</code>. The Hammerspoon version's steps are in the <a href="https://github.com/bath/hark-stt#set-up">README</a>.</p>
+        <div class="old-only">
         <ul class="req">
           <li>macOS on Apple silicon</li>
           <li>Homebrew and Apple Command Line Tools</li>
@@ -763,8 +764,9 @@ h1 .mark { display: block; color: var(--ink-2); font-weight: 700; }
             <p>Turn off Apple Dictation.</p>
           </li>
         </ol>
+        </div>
 
-        <div class="tools">
+        <div class="tools old-only">
           <h3>Check the setup</h3>
           <p>Run this any time. Every failed check includes the exact fix. Add <code>--json</code> for machine-readable output.</p>
           <div class="cmd">

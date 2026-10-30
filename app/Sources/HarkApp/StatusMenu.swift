@@ -1,5 +1,6 @@
 import AppKit
 import HarkCore
+import HarkMac
 
 /// The 🎙 item in the menu bar.
 @MainActor
@@ -64,6 +65,9 @@ final class StatusMenu: NSObject, NSMenuDelegate {
         menu.addItem(.separator())
         menu.addItem(action("Notch Island", #selector(toggleIsland), checked: controller.settings.notchIsland))
         menu.addItem(action("F5 Starts Dictation", #selector(toggleF5), checked: controller.settings.f5Key))
+        let mic = NSMenuItem(title: "Microphone", action: nil, keyEquivalent: "")
+        mic.submenu = microphoneMenu()
+        menu.addItem(mic)
         let sound = NSMenuItem(title: "Sound", action: nil, keyEquivalent: "")
         sound.submenu = soundMenu()
         menu.addItem(sound)
@@ -80,6 +84,19 @@ final class StatusMenu: NSObject, NSMenuDelegate {
         menu.addItem(updates)
         menu.addItem(.separator())
         menu.addItem(action("Quit Hark", #selector(quit), key: "q"))
+    }
+
+    private func microphoneMenu() -> NSMenu {
+        let menu = NSMenu()
+        let chosen = controller.settings.microphone
+        menu.addItem(action("Built-in Microphone", #selector(chooseMicrophone(_:)), checked: chosen == nil))
+        menu.addItem(.separator())
+        for name in CoreAudioMicrophone.choices() {
+            let item = action(name, #selector(chooseMicrophone(_:)), checked: name == chosen)
+            item.representedObject = name
+            menu.addItem(item)
+        }
+        return menu
     }
 
     private func soundMenu() -> NSMenu {
@@ -126,6 +143,7 @@ final class StatusMenu: NSObject, NSMenuDelegate {
     @objc private func toggle() { controller.press() }
     @objc private func toggleIsland() { controller.setNotchIsland(!controller.settings.notchIsland) }
     @objc private func previewDictation() { controller.preview() }
+    @objc private func chooseMicrophone(_ item: NSMenuItem) { controller.chooseMicrophone(item.representedObject as? String) }
     @objc private func toggleF5() { controller.setF5Key(!controller.settings.f5Key) }
     @objc private func showWelcome() { controller.showWelcome() }
     @objc private func showSetup() { controller.showSetup() }

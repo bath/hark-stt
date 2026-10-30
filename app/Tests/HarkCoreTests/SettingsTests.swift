@@ -2,11 +2,11 @@ import Foundation
 import Testing
 @testable import HarkCore
 
+/// Empty defaults. An absolute suite name is a plist file path, so tests
+/// never write to the user's ~/Library/Preferences.
 func freshDefaults() -> UserDefaults {
-    let name = "hark-test-\(UUID().uuidString)"
-    let defaults = UserDefaults(suiteName: name)!
-    defaults.removePersistentDomain(forName: name)
-    return defaults
+    let file = FileManager.default.temporaryDirectory.appending(path: "hark-test-\(UUID().uuidString)").path
+    return UserDefaults(suiteName: file)!
 }
 
 @Suite struct SettingsTests {
@@ -30,6 +30,12 @@ func freshDefaults() -> UserDefaults {
         #expect(again.soundVolume == 0.8)
         #expect(again.notchIsland == false)
         #expect(again.onboardingVersion == 1)
+    }
+
+    @Test func theKeyMappingEntriesHarkAddedAreKept() {
+        let defaults = freshDefaults()
+        HarkSettings(defaults).f5Entries = KeyMapping.hark
+        #expect(HarkSettings(defaults).f5Entries == KeyMapping.hark)
     }
 }
 

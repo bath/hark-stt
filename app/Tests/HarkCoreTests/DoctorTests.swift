@@ -115,6 +115,16 @@ import Testing
         #expect(report.nextStep?.command?.contains("--wait 15") == true)
     }
 
+    @Test func aFailedModelSaysToRestartHark() throws {
+        let report = report(status(model: "failed"), model: false)
+        try checkContract(report)
+        #expect(report.nextStep?.id == "model")
+        #expect(report.nextStep?.needsHuman == false)
+        #expect(report.nextStep?.command?.contains("quit app id") == true)
+        let ready = report.checks.first { $0.id == "ready" }!
+        #expect(ready.command?.contains("quit app id") == true)
+    }
+
     @Test func pathsWithSpacesAreQuoted() {
         #expect(Doctor.quoted("/Users/me/My Apps/Hark.app") == "'/Users/me/My Apps/Hark.app'")
         #expect(Doctor.quoted("/Applications/Hark.app") == "/Applications/Hark.app")

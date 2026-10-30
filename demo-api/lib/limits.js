@@ -7,8 +7,10 @@ export const ORIGIN = 'https://hark.works';
 export const MAX_SECONDS = 16;
 /** Clips per IP address per hour. */
 export const PER_IP_PER_HOUR = 20;
-/** Seconds of audio for everyone per day: 6 hours, about $0.24 at Groq's $0.04 per hour. */
+/** Billed seconds for everyone per day: 6 hours, about $0.24 at Groq's $0.04 per hour. */
 export const DAILY_SECONDS = 6 * 3600;
+/** Groq bills each request as at least 10 s of audio. */
+export const BILLED_MINIMUM = 10;
 
 /**
  * Reads a 16-bit PCM WAV header and returns the clip length in seconds, or
@@ -51,7 +53,7 @@ export async function admit({ origin, ip, seconds, store, now = Date.now() }) {
   const hour = Math.floor(now / 3_600_000), day = Math.floor(now / 86_400_000);
   const clips = await store.incr(`ip:${ip}:${hour}`, 1, 3600);
   if (clips > PER_IP_PER_HOUR) return { ok: false, status: 429, error: 'rate_limited' };
-  const used = await store.incr(`day:${day}`, Math.ceil(seconds), 86_400);
+  const used = await store.incr(`day:${day}`, Math.ceil(Math.max(seconds, BILLED_MINIMUM)), 86_400);
   if (used > DAILY_SECONDS) return { ok: false, status: 503, error: 'daily_cap' };
   return { ok: true };
 }

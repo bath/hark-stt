@@ -127,6 +127,7 @@ import Testing
         rig.engine.press()
         let seen = await events.until { if case .phase(.error) = $0 { true } else { false } }
         #expect(seen.last == .phase(.error(DictationError.paste)))
+        #expect(seen.contains(.transcript("Hello world.")))
     }
 
     @Test func aStopDuringMicStartUpStopsOnceTheMicIsOn() async {

@@ -109,6 +109,12 @@ HOME="$TMP/home" APPLICATIONS_DIR="$TMP/apps" PATH="$TMP/appbin:$TMP/nobrew:$PAT
 [ "$(cat "$HARK_LOG")" = "hdiutil attach
 hdiutil detach
 open $TMP/apps/Hark.app" ] || { printf 'FAIL: update --app ran:\n%s\n' "$(cat "$HARK_LOG")" >&2; exit 1; }
+# With Hark.app already installed, --app replaces it with the release's app.
+echo old >"$TMP/apps/Hark.app/Contents/Info.plist"
+: >"$HARK_LOG"
+HOME="$TMP/home" APPLICATIONS_DIR="$TMP/apps" PATH="$TMP/appbin:$TMP/nobrew:$PATH" \
+  HARK_RELEASES_URL="file://$TMP/releases/app.json" "$TMP/curl/bin/hark" update --app >/dev/null
+[ "$(cat "$TMP/apps/Hark.app/Contents/Info.plist")" = app ] || { echo "FAIL: update --app must replace an installed Hark.app" >&2; exit 1; }
 # Without --app and with no terminal, update only says the app exists, then updates as before.
 rm -rf "$TMP/apps/Hark.app"
 : >"$HARK_LOG"

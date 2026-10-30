@@ -3,7 +3,8 @@
 #
 #   app/scripts/release.sh             sign with Developer ID, notarize, staple, make the DMG
 #   app/scripts/release.sh --dry-run   the same with the local signing identity and no notarization
-#   app/scripts/release.sh --upload    also attach the DMG to the GitHub release v<version>
+#   app/scripts/release.sh --upload    also attach the DMG to the GitHub release v<version>,
+#                                      and set the cask's version and sha256 here and in bath/homebrew-tap
 #
 # Needs, unless --dry-run:
 #   HARK_SIGN_IDENTITY   "Developer ID Application: Name (TEAMID)"
@@ -11,7 +12,7 @@
 #   HARK_NOTARY_PROFILE  a notarytool keychain profile (xcrun notarytool store-credentials)
 #   HARK_NOTARY_KEY, HARK_NOTARY_KEY_ID, HARK_NOTARY_ISSUER   an App Store Connect API key (.p8 path), for CI
 #
-# Prints the DMG path and its sha256 for the Homebrew cask.
+# Prints the DMG path and its sha256.
 set -euo pipefail
 
 APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -86,10 +87,20 @@ if [ "$DRY_RUN" = 0 ]; then
   spctl --assess --type open --context context:primary-signature --verbose "$DMG"
 fi
 
+SHA="$(shasum -a 256 "$DMG" | cut -d' ' -f1)"
+
 if [ "$UPLOAD" = 1 ]; then
   echo "==> Upload to the GitHub release v$VERSION"
   gh release upload "v$VERSION" "$DMG" --clobber
+
+  echo "==> Cask: Casks/hark.rb here and in bath/homebrew-tap"
+  CASK="$(dirname "$APP_DIR")/Casks/hark.rb"
+  sed -i '' -e "s/^  version \".*\"/  version \"$VERSION\"/" -e "s/^  sha256 \".*\"/  sha256 \"$SHA\"/" "$CASK"
+  TAP_SHA="$(gh api repos/bath/homebrew-tap/contents/Casks/hark.rb --jq .sha 2>/dev/null || true)"
+  gh api -X PUT repos/bath/homebrew-tap/contents/Casks/hark.rb \
+    -f message="hark $VERSION (cask)" -f content="$(base64 <"$CASK")" ${TAP_SHA:+-f sha="$TAP_SHA"} >/dev/null
+  echo "Commit Casks/hark.rb here, then run: brew update && brew audit --strict --cask bath/tap/hark"
 fi
 
 echo "$DMG"
-echo "sha256 $(shasum -a 256 "$DMG" | cut -d' ' -f1)"
+echo "sha256 $SHA"

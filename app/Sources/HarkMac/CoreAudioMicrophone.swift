@@ -34,7 +34,8 @@ public enum MicrophoneError: Error, CustomStringConvertible {
 /// (Continuity) mic, which often comes first in the device list. When devices
 /// come or go, it chooses again between dictations.
 public final class CoreAudioMicrophone: Microphone, @unchecked Sendable {
-    private let deviceName: String?
+    // Read and written only on `queue`.
+    private var deviceName: String?
     private let queue = DispatchQueue(label: "works.hark.microphone", qos: .userInteractive)
     // Read and written only on `queue`.
     private var unit: InputUnit?
@@ -56,6 +57,19 @@ public final class CoreAudioMicrophone: Microphone, @unchecked Sendable {
     /// The name of the device the mic uses now, or nil before `prepare`.
     public var deviceInUse: String? {
         queue.sync { unit?.device.name }
+    }
+
+    /// The names of the mics the user can choose. iPhone (Continuity) mics are left out.
+    public static func choices() -> [String] {
+        ((try? inputDevices()) ?? []).filter { !continuity.contains($0.transport) }.map(\.name)
+    }
+
+    /// Uses this mic from the next dictation on; nil goes back to the built-in mic.
+    public func choose(_ name: String?) async {
+        _ = try? await onQueue { [self] in
+            deviceName = name
+            if !recording { try prepareUnit() }
+        }
     }
 
     public func prepare() async throws {
@@ -89,7 +103,10 @@ public final class CoreAudioMicrophone: Microphone, @unchecked Sendable {
     }
 
     private func dropUnit() {
-        queue.async { self.unit = nil }
+        queue.async {
+            self.unit = nil
+            self.recording = false
+        }
     }
 
     private func onQueue<T: Sendable>(_ work: @escaping @Sendable () throws -> T) async throws -> T {
@@ -173,15 +190,16 @@ func inputDevices() throws -> [AudioDevice] {
     }
 }
 
+let continuity: Set<UInt32> = [kAudioDeviceTransportTypeContinuityCaptureWired, kAudioDeviceTransportTypeContinuityCaptureWireless]
+
+/// The requested mic when it is connected, else the built-in mic, else the
+/// system's default input, and never an iPhone unless it is all there is.
 func selectInputDevice(requestedName: String?) throws -> AudioDevice {
     let devices = try inputDevices()
-    if let requestedName {
-        guard let requested = devices.first(where: { $0.name == requestedName }) else {
-            throw MicrophoneError.deviceNotFound(requestedName)
-        }
+    // A chosen mic that is unplugged falls back to the built-in one, so dictation keeps working.
+    if let requestedName, let requested = devices.first(where: { $0.name == requestedName }) {
         return requested
     }
-    let continuity: Set<UInt32> = [kAudioDeviceTransportTypeContinuityCaptureWired, kAudioDeviceTransportTypeContinuityCaptureWireless]
     let usable = devices.filter { !continuity.contains($0.transport) }
     if let builtIn = usable.first(where: { $0.transport == kAudioDeviceTransportTypeBuiltIn }) { return builtIn }
     let defaultID = property(AudioObjectID(kAudioObjectSystemObject), kAudioHardwarePropertyDefaultInputDevice, AudioDeviceID(0))
