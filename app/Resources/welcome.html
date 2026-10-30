@@ -1,0 +1,91 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+html, body { margin: 0; background: transparent; -webkit-user-select: none; cursor: default;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif; -webkit-font-smoothing: antialiased; }
+body { display: flex; justify-content: center; padding-top: 24px; }
+.card { width: 380px; border-radius: 28px; background: #fffdf8; color: #2b1d10; padding: 12px 12px 18px; box-sizing: border-box;
+  box-shadow: 0 0 0 0.5px rgba(80,50,20,.12), 0 30px 60px -20px rgba(90,55,20,.55);
+  animation: cardIn 420ms cubic-bezier(.34,1.3,.64,1) backwards; transition: opacity 180ms ease, transform 180ms ease; }
+.card.out { opacity: 0; transform: scale(.97); }
+@keyframes cardIn { from { opacity: 0; transform: translateY(16px) scale(.95) rotate(-1.2deg); } }
+.scene { position: relative; height: 120px; border-radius: 18px; overflow: hidden;
+  background: radial-gradient(80% 90% at 20% 100%, #ffb36b, transparent 60%), radial-gradient(70% 80% at 90% 0%, #7a5cff, transparent 60%), linear-gradient(160deg, #3b2a6b, #e0735a); }
+.mb { position: absolute; inset: 0 0 auto; height: 20px; background: rgba(0,0,0,.15); }
+/* The scene replays the real island: notch-height pill, wings that make Transcribing the widest,
+   the app's width spring (stiffness 260, damping 0.62) as linear() curves, fast fade-out, slower fade-in. */
+.isl { position: absolute; top: 0; left: 50%; width: 120px; height: 26px; transform: translateX(-50%);
+  --spring: linear(0, 0.046, 0.158, 0.305, 0.462, 0.613, 0.748, 0.859, 0.946, 1.008, 1.049, 1.073, 1.082, 1.082, 1.074, 1.063, 1.05, 1.037, 1.025, 1.015, 1.007, 1.001, 0.997, 0.995, 1);
+  --spring-short: linear(0, 0.027, 0.096, 0.192, 0.305, 0.423, 0.539, 0.649, 0.748, 0.833, 0.905, 0.963, 1.008, 1.041, 1.063, 1.076, 1.082, 1.083, 1.079, 1.072, 1.063, 1.053, 1.044, 1.034, 1);
+  background: #000; border-radius: 0 0 14px 14px; overflow: hidden; animation: islW 6s linear infinite; }
+.isl > div { position: absolute; inset: 0; display: flex; align-items: center; justify-content: space-between; padding: 0 12px;
+  font-size: 11px; font-weight: 600; color: #fff; white-space: nowrap; }
+.rec { animation: islRec 6s linear infinite; }
+.rec .l { display: flex; gap: 6px; align-items: center; font-variant-numeric: tabular-nums; }
+.rec .l i { width: 7px; height: 7px; border-radius: 50%; background: #ff453a; animation: pulse 1s ease-in-out infinite alternate; }
+.bars { display: flex; gap: 2px; align-items: center; height: 14px; }
+.bars span { width: 2.5px; border-radius: 2px; background: #ff453a; height: 6px; animation: bar 520ms ease-in-out infinite alternate; }
+.bars span:nth-child(1) { height: 5px; } .bars span:nth-child(2) { height: 11px; animation-delay: -120ms; }
+.bars span:nth-child(3) { height: 8px; animation-delay: -300ms; } .bars span:nth-child(4) { height: 13px; animation-delay: -60ms; }
+.bars span:nth-child(5) { height: 6px; animation-delay: -420ms; }
+.busy, .done { opacity: 0; }
+.busy { animation: islBusy 6s linear infinite; } .done { animation: islDone 6s linear infinite; }
+.spin { width: 11px; height: 11px; border-radius: 50%; border: 1.6px solid #fff; border-right-color: transparent; box-sizing: border-box; animation: spin 1.06s linear infinite; }
+.field { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); width: 250px; height: 34px; border-radius: 9px; box-sizing: border-box;
+  background: rgba(255,255,255,.88); color: #1d1d1f; font-size: 13px; display: flex; align-items: center; padding: 0 12px; gap: 1px; }
+.field .txt { animation: islText 6s linear infinite; }
+.field .caret { width: 1.5px; height: 15px; background: #0a84ff; }
+h3 { margin: 16px 8px 10px; font-size: 18px; font-weight: 700; letter-spacing: -0.015em; }
+ul { list-style: none; margin: 0 8px; padding: 0; display: grid; gap: 8px; }
+li { display: flex; gap: 10px; align-items: center; font-size: 14px; color: #4a3a2a; }
+li .b { width: 22px; height: 22px; border-radius: 7px; flex: none; display: grid; place-items: center; font-size: 12px; font-weight: 600; }
+kbd { font: 600 12px -apple-system, BlinkMacSystemFont, sans-serif; padding: 1px 6px; border-radius: 5px; white-space: nowrap; background: #f1e8da; color: #2b1d10; }
+.foot { display: flex; align-items: center; gap: 12px; margin: 16px 8px 0; }
+.go { white-space: nowrap; font: 600 14px -apple-system, BlinkMacSystemFont, sans-serif; color: #fff; background: #ff3b30; border: 0; border-radius: 999px; padding: 9px 18px; cursor: pointer; }
+.go:active { transform: scale(.97); }
+.close { font: 500 13px -apple-system, BlinkMacSystemFont, sans-serif; color: #9a8670; background: none; border: 0; padding: 6px; cursor: pointer; }
+.hint { margin: 12px 8px 0; font-size: 11.5px; color: #9a8670; }
+@keyframes islW { 0% { width: 120px; } 10% { width: 120px; animation-timing-function: var(--spring); } 18% { width: 196px; }
+  60% { width: 196px; animation-timing-function: var(--spring-short); } 66% { width: 236px; animation-timing-function: var(--spring); }
+  74% { width: 206px; } 86% { width: 206px; animation-timing-function: var(--spring); } 94%, 100% { width: 120px; } }
+@keyframes islRec { 0%, 11% { opacity: 0; } 15%, 60% { opacity: 1; } 61.5%, 100% { opacity: 0; } }
+@keyframes islBusy { 0%, 60% { opacity: 0; } 63%, 66% { opacity: 1; } 67%, 100% { opacity: 0; } }
+@keyframes islDone { 0%, 66% { opacity: 0; } 70%, 86% { opacity: 1; } 87.5%, 100% { opacity: 0; } }
+@keyframes islText { 0%, 66% { opacity: 0; } 67%, 96% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes pulse { to { opacity: .55; } }
+@keyframes bar { from { transform: scaleY(.45); } to { transform: scaleY(1.1); } }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .card { animation: fade 160ms ease-out backwards; } .card * { animation: none !important; }
+  .rec { opacity: 1; } .isl { width: 196px; } @keyframes fade { from { opacity: 0; } }
+}
+</style></head><body>
+<div class="card">
+  <div class="scene">
+    <div class="mb"></div>
+    <div class="isl">
+      <div class="rec"><span class="l"><i></i>0:04</span><span class="bars"><span></span><span></span><span></span><span></span><span></span></span></div>
+      <div class="busy"><span class="spin"></span>Transcribing</div>
+      <div class="done"><svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="#30d158" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6.5l2.5 2.5L10 3.5"/></svg>Pasted</div>
+    </div>
+    <div class="field"><span class="txt">Pick up oat milk on the way</span><span class="caret"></span></div>
+  </div>
+  <h3>Your notch now listens back.</h3>
+  <ul>
+    <li><span class="b" style="background:#ffe3df;color:#d70015">●</span><span><kbd>F5</kbd> to talk, <kbd>F5</kbd> again to stop.</span></li>
+    <li><span class="b" style="background:#e6f0ff;color:#0060df">I</span>Text lands wherever your cursor is.</li>
+    <li><span class="b" style="background:#efe6ff;color:#6b3fd4">⌘</span><span>Your last transcript stays on the clipboard.</span></li>
+    <li><span class="b" style="background:#fff0d9;color:#b25e00">♪</span>A short sound on start, stop and paste.</li>
+    <li><span class="b" style="background:#e3f6e8;color:#1a7f37">✓</span>Everything stays on your Mac.</li>
+  </ul>
+  <div class="foot">
+    <button class="go" type="button" id="go">Start dictating</button>
+    <button class="close" type="button" id="close">Close</button>
+  </div>
+  <p class="hint">Pick sounds or turn them off in the 🎙 menu.</p>
+</div>
+<script>
+function post(message) { try { webkit.messageHandlers.hark.postMessage(message); } catch (e) {} }
+function closeCard() { document.querySelector(".card").classList.add("out"); }
+document.getElementById("go").addEventListener("click", function () { post("start"); });
+document.getElementById("close").addEventListener("click", function () { post("close"); });
+</script>
+</body></html>
