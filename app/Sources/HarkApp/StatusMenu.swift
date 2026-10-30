@@ -63,6 +63,7 @@ final class StatusMenu: NSObject, NSMenuDelegate {
         menu.addItem(action("Toggle Dictation", #selector(toggle)))
         menu.addItem(.separator())
         menu.addItem(action("Notch Island", #selector(toggleIsland), checked: controller.settings.notchIsland))
+        menu.addItem(action("F5 Starts Dictation", #selector(toggleF5), checked: controller.settings.f5Key))
         let sound = NSMenuItem(title: "Sound", action: nil, keyEquivalent: "")
         sound.submenu = soundMenu()
         menu.addItem(sound)
@@ -125,6 +126,7 @@ final class StatusMenu: NSObject, NSMenuDelegate {
     @objc private func toggle() { controller.press() }
     @objc private func toggleIsland() { controller.setNotchIsland(!controller.settings.notchIsland) }
     @objc private func previewDictation() { controller.preview() }
+    @objc private func toggleF5() { controller.setF5Key(!controller.settings.f5Key) }
     @objc private func showWelcome() { controller.showWelcome() }
     @objc private func showSetup() { controller.showSetup() }
     @objc private func toggleLogin() { controller.setLoginItem(!controller.startsAtLogin) }

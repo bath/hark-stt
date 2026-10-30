@@ -13,6 +13,7 @@ enum CLI {
       Hark open-settings PANE                 open the System Settings pane a fix needs
                                               (accessibility, microphone, login-items, dictation)
       Hark login-item on|off                  start Hark at login, or not
+      Hark f5-key on|off                      map the dictation key (F5) to Hark, or give it back
       Hark version
 
     `Hark doctor --json` is made for AI agents: every failed check says whether a
@@ -35,6 +36,7 @@ enum CLI {
         case "doctor": return doctor(rest)
         case "open-settings": return openSettings(rest.first ?? "")
         case "login-item": return loginItem(rest.first ?? "")
+        case "f5-key": return f5Key(rest.first ?? "")
         case "version":
             print(harkVersion)
             return 0
@@ -95,6 +97,25 @@ enum CLI {
             return 1
         }
         print(LoginItem.status)
+        return 0
+    }
+}
+
+extension CLI {
+    /// Sets the same choice as the 🎙 menu, and applies it now.
+    static func f5Key(_ choice: String) -> Int32 {
+        guard choice == "on" || choice == "off" else {
+            FileHandle.standardError.write(Data("usage: Hark f5-key on|off\n".utf8))
+            return 2
+        }
+        HarkSettings().f5Key = choice == "on"
+        do {
+            if choice == "on" { try KeyMapper.system.apply() } else { try KeyMapper.system.remove() }
+        } catch {
+            FileHandle.standardError.write(Data("Hark: hidutil failed: \(error)\n".utf8))
+            return 1
+        }
+        print(KeyMapper.system.isApplied() ? "F5 → Hark" : "F5 → macOS")
         return 0
     }
 }

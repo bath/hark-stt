@@ -139,6 +139,9 @@ public enum Doctor {
                   human: running, command: running ? "\(cli) open-settings accessibility" : nil),
             check("login_item", "Hark starts at login", status?.loginItem == "enabled",
                   fix: login.fix, human: login.human, command: login.command, required: false),
+            check("f5_key", "F5 starts dictation (key mapping)", status?.keyMapping == true,
+                  fix: running ? "Optional; ⌥Space always works. Run the command to map the dictation key (F5) to Hark." : unknown,
+                  command: running ? "\(cli) f5-key on" : nil, required: false),
             check("ready", "Hark is ready to dictate", status?.model == "loaded",
                   fix: running
                     ? "The model is not loaded yet (\(status?.model ?? "unknown")). Fix the checks above, "
