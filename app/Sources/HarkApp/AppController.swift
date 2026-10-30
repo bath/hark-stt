@@ -28,6 +28,10 @@ final class AppController: NSObject, NSApplicationDelegate {
     private var hotkeysTaken: [String] = []
     private var statusTimer: Timer?
     private var previewTimers: [Timer] = []
+    private(set) var checkingForUpdates = false
+    private lazy var welcome = WelcomeCard(settings: settings) { [weak self] start in
+        if start { self?.engine.press() }
+    }
 
     override init() {
         let directory = Bundle.main.resourceURL!.appending(path: "sounds")
@@ -94,8 +98,54 @@ final class AppController: NSObject, NSApplicationDelegate {
 
     // MARK: - Dictation
 
+    /// The dictation key. The first press ever shows the welcome card instead.
     func press() {
-        engine.press()
+        if welcome.isShown {
+            welcome.close(startRecording: true)
+        } else if phase != .recording && welcome.isPending {
+            welcome.show()
+        } else {
+            engine.press()
+        }
+    }
+
+    func showWelcome() {
+        welcome.show()
+    }
+
+    var isReady: Bool {
+        modelState == .loaded && phase != .recording && phase != .transcribing
+    }
+
+    func checkForUpdates() {
+        guard !checkingForUpdates else { return }
+        checkingForUpdates = true
+        Task {
+            defer { checkingForUpdates = false }
+            let alert = NSAlert()
+            do {
+                switch try await Updates.check(current: harkVersion) {
+                case .upToDate:
+                    alert.messageText = "Hark is up to date"
+                    alert.informativeText = "Version \(harkVersion) is the latest."
+                case let .available(release):
+                    alert.messageText = "Hark \(release.version) is available"
+                    alert.informativeText = "You have \(harkVersion). Download the new version, quit Hark, and move the new Hark to Applications. Your settings and the model stay."
+                    alert.addButton(withTitle: "Download")
+                    alert.addButton(withTitle: "Later")
+                    NSApp.activate()
+                    if alert.runModal() == .alertFirstButtonReturn {
+                        NSWorkspace.shared.open(release.diskImage ?? release.page)
+                    }
+                    return
+                }
+            } catch {
+                alert.messageText = "Could not check for updates"
+                alert.informativeText = "GitHub did not answer. Try again later."
+            }
+            NSApp.activate()
+            alert.runModal()
+        }
     }
 
     /// A fake dictation with speech-like levels, so the island and the
