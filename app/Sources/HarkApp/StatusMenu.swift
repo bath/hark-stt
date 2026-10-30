@@ -50,6 +50,7 @@ final class StatusMenu: NSObject, NSMenuDelegate {
         }
         switch controller.modelState {
         case .missing: return "No Whisper model"
+        case .downloading: return "Downloading the model"
         case .loading: return "Loading the model"
         case .failed: return "The model did not load"
         case .loaded: return "Ready"
@@ -69,6 +70,8 @@ final class StatusMenu: NSObject, NSMenuDelegate {
         preview.isEnabled = controller.isReady
         menu.addItem(preview)
         menu.addItem(action("Show Welcome Screen", #selector(showWelcome)))
+        menu.addItem(action("Set Up Hark…", #selector(showSetup)))
+        menu.addItem(action("Start at Login", #selector(toggleLogin), checked: controller.startsAtLogin))
         menu.addItem(.separator())
         menu.addItem(disabled("Hark \(harkVersion)"))
         let updates = action(controller.checkingForUpdates ? "Checking for Updates…" : "Check for Updates…", #selector(checkForUpdates))
@@ -123,6 +126,8 @@ final class StatusMenu: NSObject, NSMenuDelegate {
     @objc private func toggleIsland() { controller.setNotchIsland(!controller.settings.notchIsland) }
     @objc private func previewDictation() { controller.preview() }
     @objc private func showWelcome() { controller.showWelcome() }
+    @objc private func showSetup() { controller.showSetup() }
+    @objc private func toggleLogin() { controller.setLoginItem(!controller.startsAtLogin) }
     @objc private func checkForUpdates() { controller.checkForUpdates() }
     @objc private func soundsOff() { controller.settings.soundPack = HarkSettings.soundsOff }
     @objc private func previewSounds() { controller.sounds.preview() }

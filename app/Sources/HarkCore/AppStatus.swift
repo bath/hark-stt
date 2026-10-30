@@ -7,7 +7,10 @@ public struct AppStatus: Codable, Sendable, Equatable {
     public var version: String
     public var pid: Int32
     public var phase: String
+    /// missing, downloading, loading, loaded or failed.
     public var model: String
+    /// 0…1 while the model downloads.
+    public var modelProgress: Double?
     public var accessibility: Bool
     public var microphone: String
     public var hotkeysTaken: [String]
@@ -15,8 +18,10 @@ public struct AppStatus: Codable, Sendable, Equatable {
     public var loginItem: String?
     public var updated: Date
 
-    public init(version: String, pid: Int32, phase: String, model: String, accessibility: Bool, microphone: String,
-                hotkeysTaken: [String], keyMapping: Bool? = nil, loginItem: String? = nil, updated: Date) {
+    public init(version: String, pid: Int32, phase: String, model: String, modelProgress: Double? = nil,
+                accessibility: Bool, microphone: String, hotkeysTaken: [String], keyMapping: Bool? = nil,
+                loginItem: String? = nil, updated: Date) {
+        self.modelProgress = modelProgress
         self.version = version
         self.pid = pid
         self.phase = phase
@@ -40,6 +45,13 @@ public struct AppStatus: Codable, Sendable, Equatable {
         encoder.dateEncodingStrategy = .iso8601
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         try encoder.encode(self).write(to: url, options: .atomic)
+    }
+
+    /// The status of a running app: a fresh file whose process is alive.
+    public static func live(from url: URL = AppStatus.file, now: Date = Date()) -> AppStatus? {
+        guard let status = read(from: url), now.timeIntervalSince(status.updated) < 15, kill(status.pid, 0) == 0
+        else { return nil }
+        return status
     }
 
     public static func read(from url: URL = AppStatus.file) -> AppStatus? {
