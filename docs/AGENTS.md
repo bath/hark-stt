@@ -147,6 +147,7 @@ This keeps the Homebrew apps and the model. The command prints how to remove tho
 | `recorder/HarkRecorder.swift` | Native Core Audio helper. Talks JSON lines over stdin and stdout. |
 | `bin/hark` | The CLI: `doctor`, `update`, `setup`, `open-settings`, `uninstall`, `version`. Python standard library only. |
 | `Formula/hark.rb` | A copy of the Homebrew formula in [bath/homebrew-tap](https://github.com/bath/homebrew-tap). The tap has the live one. |
+| `Casks/hark.rb` | A copy of the Hark.app cask for the same tap. |
 | `sounds/generate.py` | Renders the sound packs at install time. Python standard library only. |
 | `install.sh` | The installer. Must keep working when piped from curl. |
 | `karabiner/hark.json` | The F5 → F18 rule. |
@@ -193,7 +194,16 @@ Rules:
 - Keep `VERSION` in `hark.lua` and `bin/hark` the same. `tests/hark-cli.sh` checks this.
 - Every failed doctor check needs a `fix` an agent can act on, and `needs_human` must be true only when a person has to act.
 
-Release:
+Release of Hark.app (the native app):
+
+1. Set `harkVersion` in `app/Sources/HarkCore/Version.swift` and merge to `main`.
+2. Tag `vX.Y.Z` on `main` and make a GitHub release from it (`gh release create vX.Y.Z --verify-tag`).
+3. Build, sign, notarize and attach the disk image. On a Mac with the "Developer ID Application" certificate and a notarytool profile: `HARK_SIGN_IDENTITY="Developer ID Application: …" HARK_NOTARY_PROFILE=hark app/scripts/release.sh --upload`. Or run the "Release Hark.app" workflow in GitHub Actions (its header lists the secrets). `--dry-run` does everything but notarization, with the local identity.
+4. In [bath/homebrew-tap](https://github.com/bath/homebrew-tap), copy `Casks/hark.rb` to `Casks/hark.rb` with the new `version` and the `sha256` the script printed. Run `brew audit --strict --cask bath/tap/hark`, and copy the result back here.
+
+The 🎙 Check for Updates… and `hark update --app` find the release by its `Hark-X.Y.Z.dmg` asset.
+
+Release of the Hammerspoon version:
 
 1. Set the new `VERSION` in `hark.lua` and `bin/hark`, and merge to `main`.
 2. Tag `vX.Y.Z` on `main` and make a GitHub release from the tag (`gh release create vX.Y.Z --verify-tag`). The 🎙 menu reads `releases/latest`, so a tag without a release is not offered.
