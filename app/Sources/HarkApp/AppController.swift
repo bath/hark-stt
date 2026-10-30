@@ -3,6 +3,7 @@ import AVFoundation
 import HarkCore
 import HarkMac
 import OSLog
+import QuartzCore
 
 let log = Logger(subsystem: "works.hark.Hark", category: "app")
 
@@ -15,6 +16,7 @@ final class AppController: NSObject, NSApplicationDelegate {
 
     let settings = HarkSettings()
     let sounds: SoundPlayer
+    let island = NotchIsland()
     private(set) var phase = DictationPhase.idle
     private(set) var modelState = ModelState.missing
     private(set) var lastTimings: DictationTimings?
@@ -25,6 +27,7 @@ final class AppController: NSObject, NSApplicationDelegate {
     private var events: Task<Void, Never>?
     private var hotkeysTaken: [String] = []
     private var statusTimer: Timer?
+    private var previewTimers: [Timer] = []
 
     override init() {
         let directory = Bundle.main.resourceURL!.appending(path: "sounds")
@@ -50,6 +53,7 @@ final class AppController: NSObject, NSApplicationDelegate {
         statusTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.writeStatus() }
         }
+        if CommandLine.arguments.contains("--preview") { preview() }
     }
 
     /// For `Hark doctor`, which runs in another process.
@@ -94,6 +98,44 @@ final class AppController: NSObject, NSApplicationDelegate {
         engine.press()
     }
 
+    /// A fake dictation with speech-like levels, so the island and the
+    /// current sound pack can be tried without recording or pasting.
+    func preview() {
+        guard phase != .recording && phase != .transcribing else { return }
+        previewTimers.forEach { $0.invalidate() }
+        let signal: (DictationPhase, SoundTransition) -> Void = { [weak self] phase, sound in
+            guard let self else { return }
+            self.sounds.play(sound)
+            if self.settings.notchIsland { self.island.show(phase) }
+        }
+        signal(.recording, .start)
+        var nextChange = 0.0, rms: Float = 0
+        let levels = Timer.scheduledTimer(withTimeInterval: 1.0 / 30, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated {
+                let now = CACurrentMediaTime()
+                if now > nextChange {
+                    let pause = Double.random(in: 0..<1) < 0.2
+                    rms = pause ? 0.003 : Float.random(in: 0.01..<0.15)
+                    nextChange = now + (pause ? 0.3 : Double.random(in: 0.08..<0.25))
+                }
+                self?.island.level(rms)
+            }
+        }
+        let after: (Double, @escaping @MainActor () -> Void) -> Timer = { delay, work in
+            Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { _ in MainActor.assumeIsolated(work) }
+        }
+        previewTimers = [
+            levels,
+            after(3) { levels.invalidate(); signal(.transcribing, .stop) },
+            after(4.4) { signal(.done, .done) },
+        ]
+    }
+
+    func setNotchIsland(_ on: Bool) {
+        settings.notchIsland = on
+        if !on { island.hide() }
+    }
+
     private func listen() {
         let engine = engine!
         events = Task { [weak self] in
@@ -111,14 +153,19 @@ final class AppController: NSObject, NSApplicationDelegate {
             case .recording: sounds.play(.start)
             case .transcribing: sounds.play(.stop)
             case .done: sounds.play(.done)
-            case let .error(message):
-                sounds.play(.error)
-                menu.flash(message)
+            case .error: sounds.play(.error)
             case .idle: break
+            }
+            if settings.notchIsland {
+                island.show(new)
+            } else if case let .error(message) = new {
+                menu.flash(message)
             }
             menu.update()
             writeStatus()
-        case .level, .transcript:
+        case let .level(rms):
+            if settings.notchIsland { island.level(rms) }
+        case .transcript:
             break
         case let .timings(timings):
             lastTimings = timings
