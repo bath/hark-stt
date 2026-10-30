@@ -8,7 +8,9 @@
    demo video and island did. */
 (function () {
   var POSTHOG_KEY = 'phc_D2xNPh57Rr4cNnrtXTL8CM7ZMiJFutgjQcsxy9awvofn';
-  var POSTHOG_HOST = 'https://us.i.posthog.com';
+  /* t.hark.works is a reverse proxy to PostHog (proxy/ in the repo), so ad
+     blockers that block *.posthog.com do not drop the events. */
+  var POSTHOG_HOST = 'https://t.hark.works';
   if (!POSTHOG_KEY) return;
 
   /* Load posthog-js from PostHog's CDN, then set it up. Every call below
@@ -16,13 +18,14 @@
   var lib = document.createElement('script');
   lib.async = true;
   lib.crossOrigin = 'anonymous';
-  lib.src = POSTHOG_HOST.replace('.i.posthog.com', '-assets.i.posthog.com') + '/static/array.js';
+  lib.src = POSTHOG_HOST + '/static/array.js';
   lib.onload = setup;
   document.head.appendChild(lib);
 
   function setup() {
     posthog.init(POSTHOG_KEY, {
       api_host: POSTHOG_HOST,
+      ui_host: 'https://us.posthog.com',
       defaults: '2025-05-24',
       person_profiles: 'always',
       capture_pageview: true,
