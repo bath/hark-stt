@@ -24,6 +24,8 @@ final class AppController: NSObject, NSApplicationDelegate {
     private let setupModel = SetupModel()
     private lazy var setup = SetupWindow(model: setupModel)
     private var download: Task<Void, Never>?
+    private var keyboards: KeyboardWatcher?
+    private var keyMappingApplied = false
     private var engine: DictationEngine!
     private var menu: StatusMenu!
     private var hotkeys: Hotkeys!
@@ -56,6 +58,13 @@ final class AppController: NSObject, NSApplicationDelegate {
             downloadModel()
         }
         firstRun()
+        applyKeyMapping()
+        keyboards = KeyboardWatcher { [weak self] in
+            // Give the new keyboard a moment to settle, then map its key too.
+            Timer.scheduledTimer(withTimeInterval: 1, repeats: false) { _ in
+                MainActor.assumeIsolated { self?.applyKeyMapping(force: true) }
+            }
+        }
         writeStatus()
         statusTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.writeStatus() }
@@ -83,6 +92,7 @@ final class AppController: NSObject, NSApplicationDelegate {
             accessibility: AXIsProcessTrusted(),
             microphone: microphone,
             hotkeysTaken: hotkeysTaken,
+            keyMapping: keyMappingApplied,
             loginItem: LoginItem.status,
             updated: Date()
         )
@@ -92,6 +102,8 @@ final class AppController: NSObject, NSApplicationDelegate {
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         hotkeys.unregister()
         statusTimer?.invalidate()
+        // F18 does nothing without Hark, so give F5 back to macOS.
+        try? KeyMapper.system.remove()
         try? FileManager.default.removeItem(at: AppStatus.file)
         engine.shutdown()
         download?.cancel()
@@ -187,6 +199,26 @@ final class AppController: NSObject, NSApplicationDelegate {
             after(3) { levels.invalidate(); signal(.transcribing, .stop) },
             after(4.4) { signal(.done, .done) },
         ]
+    }
+
+    // MARK: - F5
+
+    func setF5Key(_ on: Bool) {
+        settings.f5Key = on
+        if on {
+            applyKeyMapping()
+        } else {
+            do { try KeyMapper.system.remove() } catch { log.error("hidutil: \(String(describing: error))") }
+            keyMappingApplied = false
+            writeStatus()
+        }
+    }
+
+    private func applyKeyMapping(force: Bool = false) {
+        guard settings.f5Key else { return }
+        do { try KeyMapper.system.apply(force: force) } catch { log.error("hidutil: \(String(describing: error))") }
+        keyMappingApplied = KeyMapper.system.isApplied()
+        writeStatus()
     }
 
     func setNotchIsland(_ on: Bool) {

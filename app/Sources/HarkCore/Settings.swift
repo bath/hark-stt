@@ -4,7 +4,7 @@ import Foundation
 /// under `hark.` in hs.settings, so the move to the app can copy them.
 public struct HarkSettings: @unchecked Sendable {
     public enum Key: String, CaseIterable, Sendable {
-        case soundPack, soundVolume, notchIsland, onboardingVersion
+        case soundPack, soundVolume, notchIsland, onboardingVersion, f5Key
         /// The user (or the first run) has set Start at Login once; do not change it again.
         case loginItemChosen
     }
@@ -32,6 +32,12 @@ public struct HarkSettings: @unchecked Sendable {
     public var notchIsland: Bool {
         get { defaults.object(forKey: Key.notchIsland.rawValue) as? Bool ?? true }
         nonmutating set { defaults.set(newValue, forKey: Key.notchIsland.rawValue) }
+    }
+
+    /// F5 starts dictation through Hark's key mapping.
+    public var f5Key: Bool {
+        get { defaults.object(forKey: Key.f5Key.rawValue) as? Bool ?? true }
+        nonmutating set { defaults.set(newValue, forKey: Key.f5Key.rawValue) }
     }
 
     /// The welcome card version the user has seen. 0 means none.

@@ -6,10 +6,10 @@ import Testing
     let app = "/Applications/Hark.app"
 
     func status(microphone: String = "authorized", accessibility: Bool = true, model: String = "loaded",
-                progress: Double? = nil, login: String = "enabled") -> AppStatus {
+                progress: Double? = nil, login: String = "enabled", f5: Bool = true) -> AppStatus {
         AppStatus(version: "2.0.0", pid: 1, phase: "idle", model: model, modelProgress: progress,
-                  accessibility: accessibility, microphone: microphone, hotkeysTaken: [], loginItem: login,
-                  updated: Date())
+                  accessibility: accessibility, microphone: microphone, hotkeysTaken: [], keyMapping: f5,
+                  loginItem: login, updated: Date())
     }
 
     func report(_ status: AppStatus?, model: Bool = true, app: String? = nil) -> Doctor.Report {
@@ -90,6 +90,15 @@ import Testing
         let login = report.checks.first { $0.id == "login_item" }!
         #expect(login.needsHuman == false)
         #expect(login.command?.hasSuffix("login-item on") == true)
+    }
+
+    @Test func f5WithoutTheMappingIsOptional() throws {
+        let report = report(status(f5: false))
+        try checkContract(report)
+        #expect(report.ok)
+        #expect(report.nextStep?.id == "f5_key")
+        #expect(report.nextStep?.needsHuman == false)
+        #expect(report.nextStep?.command?.hasSuffix("f5-key on") == true)
     }
 
     @Test func aLoginItemThatNeedsApprovalNeedsAPerson() throws {
