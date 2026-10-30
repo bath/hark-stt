@@ -4,6 +4,73 @@ Hark is better, private, on-device dictation for macOS. It is more private, more
 
 ## Install Hark for a user
 
+Hark comes in two forms. **Hark.app** is the native app: one download, two permission clicks, no Homebrew, Hammerspoon or Karabiner. The **Hammerspoon version** is the original. Install Hark.app when a release has it:
+
+```sh
+curl -fsSL https://api.github.com/repos/bath/hark-stt/releases/latest | grep -o '"browser_download_url": *"[^"]*Hark-[0-9.]*\.dmg"' | cut -d'"' -f4
+```
+
+- If this prints a URL, follow "Install Hark.app".
+- If it prints nothing, no release has the app yet. Follow "Install the Hammerspoon version".
+
+## Install Hark.app
+
+### 1. Check the Mac
+
+```sh
+uname -sm                     # expect: Darwin arm64
+sw_vers -productVersion       # expect: 14 or later
+```
+
+### 2. Install the app
+
+With Homebrew (`command -v brew` finds it):
+
+```sh
+brew install --cask bath/tap/hark
+open /Applications/Hark.app
+```
+
+Without Homebrew, use the URL from the check above:
+
+```sh
+curl -fL "<url>" -o /tmp/Hark.dmg
+hdiutil attach -nobrowse -quiet -mountpoint /tmp/hark-dmg /tmp/Hark.dmg
+ditto /tmp/hark-dmg/Hark.app /Applications/Hark.app
+hdiutil detach -quiet /tmp/hark-dmg && rm /tmp/Hark.dmg
+open /Applications/Hark.app
+```
+
+On its first run Hark.app downloads the Whisper model (574 MB) by itself, or reuses one that the Hammerspoon version downloaded. If the Mac has the Hammerspoon version, the app also moves it over: it keeps the sounds and settings, and removes the old Hark after its first dictation.
+
+### 3. Fix what the doctor reports
+
+```sh
+/Applications/Hark.app/Contents/MacOS/Hark doctor --json
+```
+
+It has the same shape as the Hammerspoon version's report (step 4 there): `ok`, `next_step`, and `checks` with `id`, `ok`, `required`, and, when a check failed, `needs_human`, `fix` and `command`. Repeat until `ok` is `true`:
+
+1. Read `next_step`.
+2. If `needs_human` is `true`, run `command`, tell the user the `fix` text, and wait until they say they are done.
+3. If `needs_human` is `false`, run `command` yourself.
+4. Run the doctor again. Add `--wait 60` while the model downloads, and `--wait 15` after the app starts.
+
+The human steps you will see:
+
+| Check | What the user does |
+|---|---|
+| `microphone` | Clicks Allow when macOS asks if Hark may use the microphone. |
+| `accessibility` | System Settings → Privacy & Security → Accessibility → turns on Hark. Hark continues by itself. |
+
+Checks with `"required": false` are optional: `app_in_applications`, `login_item` (start at login) and `f5_key` (F5 starts dictation; ⌥Space always works). Their commands need no person.
+
+### 4. Hand over
+
+Tell the user the same as in the last step of the Hammerspoon version, and that 🎙 → Set Up Hark… shows the setup window again.
+
+## Install the Hammerspoon version
+
 Follow these steps in order. Each step says what you run and what the user must do. The user only has to act where macOS requires a person: permissions, a password, and one switch in Karabiner.
 
 ### 1. Check the Mac
@@ -113,6 +180,14 @@ When `ok` is `true`, tell the user:
 
 Do this when the user asks you to update or upgrade Hark.
 
+If `/Applications/Hark.app` exists, the user has Hark.app:
+
+- With Homebrew: `brew upgrade --cask hark`. Without: install the new disk image the same way as in "Install Hark.app" (quit Hark first: `osascript -e 'quit app id "works.hark.Hark"'`).
+- The user can also do it in the app: 🎙 → Check for Updates….
+- Settings, permissions and the model stay. Run the doctor afterwards.
+
+Otherwise the user has the Hammerspoon version:
+
 1. Find the `hark` CLI. Use `hark` if `command -v hark` finds it (a Homebrew install). If not, use `~/.hammerspoon/hark/bin/hark`. If neither exists, Hark is not installed. Follow "Install Hark for a user".
 2. Run:
 
@@ -126,11 +201,27 @@ Do this when the user asks you to update or upgrade Hark.
 3. The output ends with the doctor report. Fix what it reports, the same as in step 4 of the install. An update keeps the macOS permissions, so you usually do not have to ask the user for anything.
 4. Tell the user the new version (`hark version`).
 
+When a release has Hark.app, `hark update` says so, and `hark update --app` installs the app and moves the user to it.
+
 From version 1.2.0, the user can also update without you: 🎙 menu → Check for Updates….
 
 If you run `brew upgrade hark` yourself, run `hark setup --json` after it. `brew upgrade` changes only the files in Homebrew. The `hark_current` doctor check fails until `hark setup` copies the new files to `~/.hammerspoon/hark`.
 
 ## Remove Hark
+
+Hark.app:
+
+```sh
+osascript -e 'quit app id "works.hark.Hark"'
+/Applications/Hark.app/Contents/MacOS/Hark login-item off
+rm -rf /Applications/Hark.app
+rm -rf ~/Library/Application\ Support/Hark      # the model and status; ask the user first
+defaults delete works.hark.Hark                  # the settings
+```
+
+With Homebrew, `brew uninstall --zap --cask hark` does the same.
+
+The Hammerspoon version:
 
 ```sh
 ~/.hammerspoon/hark/bin/hark uninstall          # shows what it removes
@@ -152,7 +243,7 @@ This keeps the Homebrew apps and the model. The command prints how to remove tho
 | `install.sh` | The installer. Must keep working when piped from curl. |
 | `karabiner/hark.json` | The F5 → F18 rule. |
 | `docs/` | The website (GitHub Pages) and the README images. |
-| `app/` | The native Hark.app in Swift (issue #30), being built. A Swift package with no Xcode project. `HarkCore` has the `DictationEngine` and every rule that needs no macOS API; `HarkMac` has the Core Audio mic, whisper.cpp and paste; `hark-dictate` dictates from the terminal. |
+| `app/` | The native Hark.app in Swift (issue #30). A Swift package with no Xcode project. `HarkCore` has the `DictationEngine` and every rule that needs no macOS API; `HarkMac` has the Core Audio mic, whisper.cpp and paste; `hark-dictate` dictates from the terminal. |
 
 Tests:
 

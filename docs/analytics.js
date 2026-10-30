@@ -61,6 +61,7 @@
     var COMMANDS = {
       'agent-prompt': 'agent_prompt',
       'curl-cmd': 'curl_install',
+      'cask-cmd': 'cask_install',
       'doctor-cmd': 'doctor',
       'settings-cmd': 'open_settings',
       'uninstall-cmd': 'uninstall'
@@ -69,6 +70,7 @@
       var id = btn.getAttribute('data-copy');
       track('command_copied', { command: COMMANDS[id] || id, method: 'button' });
     });
+    on('[data-app-download]', 'click', function (a) { track('app_download_clicked', { url: a.href }); });
     Object.keys(COMMANDS).forEach(function (id) {
       var el = document.getElementById(id);
       if (el) el.addEventListener('copy', function () { track('command_copied', { command: COMMANDS[id], method: 'manual' }); });
