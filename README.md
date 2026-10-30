@@ -55,7 +55,7 @@ The dictation built into macOS mishears words, and you cannot tell where your vo
 
 1. **Private.** Your voice never leaves your Mac. Not to Apple, not to us, not to anyone. No account, no telemetry, and the code is open.
 2. **Accurate.** Whisper large-v3-turbo writes full sentences with punctuation and capital letters, and handles names, technical words and long, fast speech.
-3. **Fast.** The model stays loaded, so there is no wait. On an M5 Pro, 15 seconds of speech becomes text in about 0.3 s, and the mic starts about 66 ms after F5.
+3. **Fast.** The model stays loaded, so there is no wait. On an M5 Pro, 15 seconds of speech becomes text in about 0.3 s, and the mic starts about 63 ms after F5.
 
 ## What you get
 
@@ -225,7 +225,7 @@ Run `~/.hammerspoon/hark/bin/hark doctor` first. It names the part that is broke
 ## Limits
 
 - Text arrives after you stop, not word by word.
-- The helper keeps its input unit initialized but stopped. On the tested M1 Pro, the first audio buffer arrived 64 ms after F5 (median, 71 ms p95). Other Macs and external microphones vary.
+- The helper keeps its input unit initialized but stopped, with a 64-frame buffer. On an M5 Pro, the first audio buffer arrived 63 ms after F5 (median of 30 runs, 75 ms p95). Most of that time is macOS starting the mic hardware. Other Macs and external microphones vary.
 - A mic that is fully off cannot record before F5. Anything you say during the short start-up window after the key press is lost. In normal use, that window was shorter than the time it takes to start speaking.
 - The helper picks the built-in mic by name, so an iPhone Continuity mic cannot take over because it appears first in the device list.
 - A few secure fields block programmatic paste. The transcript is still on the clipboard.
