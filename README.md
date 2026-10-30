@@ -26,15 +26,17 @@
 
 ## Install
 
+**Hark.app.** The native app needs no Homebrew, Hammerspoon or Karabiner: download it from the [latest release](https://github.com/bath/hark-stt/releases/latest) (the `Hark-X.Y.Z.dmg` file), or run `brew install --cask bath/tap/hark`. Open it, click Allow for the microphone, and turn on Hark in System Settings → Privacy & Security → Accessibility. It downloads the Whisper model by itself, maps F5 itself, and moves an existing Hammerspoon install over with its settings. Check it with `/Applications/Hark.app/Contents/MacOS/Hark doctor`. The app comes with the first signed release; until a release has the disk image, use the Hammerspoon version below.
+
 **With your AI agent.** Paste this into Claude Code, Codex, Cursor or another coding agent:
 
 ```text
 Install Hark (https://hark.works) on this Mac. Read https://hark.works/AGENTS.md and follow it step by step.
 ```
 
-The agent runs the installer, then runs `hark doctor --json` until every check passes. When macOS needs you, the agent opens the right System Settings pane and tells you what to turn on.
+The agent installs Hark.app when a release has it, and otherwise runs the installer. Then it runs `hark doctor --json` until every check passes. When macOS needs you, the agent opens the right System Settings pane and tells you what to turn on.
 
-**Yourself.** You need [Homebrew](https://brew.sh) and the Apple Command Line Tools (`xcode-select --install`).
+**The Hammerspoon version, yourself.** You need [Homebrew](https://brew.sh) and the Apple Command Line Tools (`xcode-select --install`).
 
 ```sh
 curl -fsSL https://hark.works/install.sh | bash
