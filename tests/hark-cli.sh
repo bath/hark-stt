@@ -6,7 +6,10 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TMP="$(mktemp -d "${TMPDIR:-/tmp}/hark-cli-test.XXXXXX")"
 trap 'rm -rf "$TMP"' EXIT
-mkdir -p "$TMP/home"
+mkdir -p "$TMP/home" "$TMP/releases"
+# `hark update` asks GitHub for the latest release; never reach it from a test.
+echo '{"tag_name": "v1.2.1", "assets": []}' >"$TMP/releases/no-app.json"
+export HARK_RELEASES_URL="file://$TMP/releases/no-app.json"
 
 report="$(HOME="$TMP/home" APPLICATIONS_DIR="$TMP/apps" "$ROOT/bin/hark" doctor --json || true)"
 /usr/bin/python3 - "$report" <<'PY'
@@ -85,8 +88,43 @@ if HOME="$TMP/home" PATH="$TMP/nobrew:$PATH" HARK_INSTALLER_URLS="file://$TMP/we
   exit 1
 fi
 
+# With a release that has Hark.app, `hark update --app` installs the app from
+# the disk image and opens it. hdiutil and open are fakes.
+mkdir -p "$TMP/appbin" "$TMP/apps"
+printf 'disk image' >"$TMP/releases/Hark-2.0.0.dmg"
+printf '{"tag_name": "v2.0.0", "assets": [{"name": "Hark-2.0.0.dmg", "browser_download_url": "file://%s"}]}' \
+  "$TMP/releases/Hark-2.0.0.dmg" >"$TMP/releases/app.json"
+cat >"$TMP/appbin/hdiutil" <<'MOCK'
+#!/bin/bash
+echo "hdiutil $1" >>"$HARK_LOG"
+if [ "$1" = attach ]; then mount="${@: -2:1}"; mkdir -p "$mount/Hark.app/Contents"; echo app >"$mount/Hark.app/Contents/Info.plist"; fi
+exit 0
+MOCK
+printf '#!/bin/bash\necho "open $*" >>"$HARK_LOG"\n' >"$TMP/appbin/open"
+chmod +x "$TMP/appbin/"*
+: >"$HARK_LOG"
+HOME="$TMP/home" APPLICATIONS_DIR="$TMP/apps" PATH="$TMP/appbin:$TMP/nobrew:$PATH" \
+  HARK_RELEASES_URL="file://$TMP/releases/app.json" "$TMP/curl/bin/hark" update --app >/dev/null
+[ -f "$TMP/apps/Hark.app/Contents/Info.plist" ] || { echo "FAIL: update --app must copy Hark.app to Applications" >&2; exit 1; }
+[ "$(cat "$HARK_LOG")" = "hdiutil attach
+hdiutil detach
+open $TMP/apps/Hark.app" ] || { printf 'FAIL: update --app ran:\n%s\n' "$(cat "$HARK_LOG")" >&2; exit 1; }
+# Without --app and with no terminal, update only says the app exists, then updates as before.
+rm -rf "$TMP/apps/Hark.app"
+: >"$HARK_LOG"
+note="$(HOME="$TMP/home" APPLICATIONS_DIR="$TMP/apps" PATH="$TMP/appbin:$TMP/nobrew:$PATH" \
+  HARK_RELEASES_URL="file://$TMP/releases/app.json" HARK_INSTALLER_URLS="file://$TMP/web/install.sh" \
+  "$TMP/curl/bin/hark" update --json 2>&1 </dev/null >/dev/null)"
+case "$note" in *"hark update --app"*) ;; *) echo "FAIL: update must offer Hark.app, said: $note" >&2; exit 1 ;; esac
+grep -q "downloaded installer" "$HARK_LOG" || { echo "FAIL: update must still update this install" >&2; exit 1; }
+if HOME="$TMP/home" APPLICATIONS_DIR="$TMP/apps" PATH="$TMP/appbin:$TMP/nobrew:$PATH" \
+  "$TMP/curl/bin/hark" update --app 2>/dev/null; then
+  echo "FAIL: update --app must fail when no release has Hark.app" >&2
+  exit 1
+fi
+
 # hark.works serves docs/, so these copies must match the repo files.
 for file in llms.txt install.sh AGENTS.md; do
   cmp -s "$ROOT/$file" "$ROOT/docs/$file" || { echo "FAIL: docs/$file (served at hark.works/$file) must match $file; run cp $file docs/" >&2; exit 1; }
 done
-echo "PASS: hark doctor reports a next step, update and setup run the right installer, uninstall needs --yes"
+echo "PASS: hark doctor reports a next step, update and setup run the right installer, update offers Hark.app, uninstall needs --yes"
