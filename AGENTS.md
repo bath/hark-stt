@@ -167,7 +167,10 @@ swift test                                          # engine and adapters, with 
 HARK_SLOW_TESTS=1 swift test -c release --filter WhisperSlowTests   # real whisper.cpp and model
 swift run -c release hark-dictate                   # Return to start and stop; prints text and timings
 swift run -c release hark-dictate --file clip.wav   # Whisper time for a 16 kHz mono WAV
+scripts/build-app.sh                                # builds app/build/Hark.app
 ```
+
+Hark.app writes `~/Library/Application Support/Hark/status.json` every 5 seconds (phase, model, permissions). Its hotkeys work next to the Hammerspoon version's, so both start on ⌥Space: quit one of them when you test the other.
 
 The terminal app needs the Microphone permission for `hark-dictate`.
 
