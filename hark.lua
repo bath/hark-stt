@@ -641,24 +641,28 @@ body { display: flex; justify-content: center; padding-top: 24px; }
 .scene { position: relative; height: 120px; border-radius: 18px; overflow: hidden;
   background: radial-gradient(80% 90% at 20% 100%, #ffb36b, transparent 60%), radial-gradient(70% 80% at 90% 0%, #7a5cff, transparent 60%), linear-gradient(160deg, #3b2a6b, #e0735a); }
 .mb { position: absolute; inset: 0 0 auto; height: 20px; background: rgba(0,0,0,.15); }
-.isl { position: absolute; top: 0; left: 50%; width: 220px; height: 26px; transform: translateX(-50%);
-  background: #000; border-radius: 0 0 14px 14px; overflow: hidden; animation: islW 7s cubic-bezier(.32,.72,0,1) infinite; }
+/* The scene replays the real island: notch-height pill, wings that make Transcribing the widest,
+   the app's width spring (stiffness 260, damping 0.62) as linear() curves, fast fade-out, slower fade-in. */
+.isl { position: absolute; top: 0; left: 50%; width: 120px; height: 26px; transform: translateX(-50%);
+  --spring: linear(0, 0.046, 0.158, 0.305, 0.462, 0.613, 0.748, 0.859, 0.946, 1.008, 1.049, 1.073, 1.082, 1.082, 1.074, 1.063, 1.05, 1.037, 1.025, 1.015, 1.007, 1.001, 0.997, 0.995, 1);
+  --spring-short: linear(0, 0.027, 0.096, 0.192, 0.305, 0.423, 0.539, 0.649, 0.748, 0.833, 0.905, 0.963, 1.008, 1.041, 1.063, 1.076, 1.082, 1.083, 1.079, 1.072, 1.063, 1.053, 1.044, 1.034, 1);
+  background: #000; border-radius: 0 0 14px 14px; overflow: hidden; animation: islW 6s linear infinite; }
 .isl > div { position: absolute; inset: 0; display: flex; align-items: center; justify-content: space-between; padding: 0 12px;
   font-size: 11px; font-weight: 600; color: #fff; white-space: nowrap; }
-.rec { animation: islRec 7s ease infinite; }
+.rec { animation: islRec 6s linear infinite; }
 .rec .l { display: flex; gap: 6px; align-items: center; font-variant-numeric: tabular-nums; }
-.rec .l i { width: 7px; height: 7px; border-radius: 50%; background: #ff453a; }
+.rec .l i { width: 7px; height: 7px; border-radius: 50%; background: #ff453a; animation: pulse 1s ease-in-out infinite alternate; }
 .bars { display: flex; gap: 2px; align-items: center; height: 14px; }
 .bars span { width: 2.5px; border-radius: 2px; background: #ff453a; height: 6px; animation: bar 520ms ease-in-out infinite alternate; }
 .bars span:nth-child(1) { height: 5px; } .bars span:nth-child(2) { height: 11px; animation-delay: -120ms; }
 .bars span:nth-child(3) { height: 8px; animation-delay: -300ms; } .bars span:nth-child(4) { height: 13px; animation-delay: -60ms; }
 .bars span:nth-child(5) { height: 6px; animation-delay: -420ms; }
-.busy, .done { justify-content: center !important; gap: 6px; opacity: 0; }
-.busy { animation: islBusy 7s ease infinite; } .done { animation: islDone 7s ease infinite; }
-.spin { width: 11px; height: 11px; border-radius: 50%; border: 2px solid rgba(255,255,255,.25); border-top-color: #fff; box-sizing: border-box; animation: spin 800ms linear infinite; }
+.busy, .done { opacity: 0; }
+.busy { animation: islBusy 6s linear infinite; } .done { animation: islDone 6s linear infinite; }
+.spin { width: 11px; height: 11px; border-radius: 50%; border: 1.6px solid #fff; border-right-color: transparent; box-sizing: border-box; animation: spin 1.06s linear infinite; }
 .field { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); width: 250px; height: 34px; border-radius: 9px; box-sizing: border-box;
   background: rgba(255,255,255,.88); color: #1d1d1f; font-size: 13px; display: flex; align-items: center; padding: 0 12px; gap: 1px; }
-.field .txt { animation: islText 7s ease infinite; }
+.field .txt { animation: islText 6s linear infinite; }
 .field .caret { width: 1.5px; height: 15px; background: #0a84ff; }
 h3 { margin: 16px 8px 10px; font-size: 18px; font-weight: 700; letter-spacing: -0.015em; }
 ul { list-style: none; margin: 0 8px; padding: 0; display: grid; gap: 8px; }
@@ -670,16 +674,19 @@ kbd { font: 600 12px -apple-system, BlinkMacSystemFont, sans-serif; padding: 1px
 .go:active { transform: scale(.97); }
 .close { font: 500 13px -apple-system, BlinkMacSystemFont, sans-serif; color: #9a8670; background: none; border: 0; padding: 6px; cursor: pointer; }
 .hint { margin: 12px 8px 0; font-size: 11.5px; color: #9a8670; }
-@keyframes islW { 0%, 12% { width: 120px; } 18%, 55% { width: 220px; } 60%, 78% { width: 150px; } 82%, 95% { width: 170px; } 100% { width: 120px; } }
-@keyframes islRec { 0%, 15% { opacity: 0; } 20%, 54% { opacity: 1; } 57%, 100% { opacity: 0; } }
-@keyframes islBusy { 0%, 57% { opacity: 0; } 61%, 77% { opacity: 1; } 80%, 100% { opacity: 0; } }
-@keyframes islDone { 0%, 80% { opacity: 0; } 84%, 94% { opacity: 1; } 98%, 100% { opacity: 0; } }
-@keyframes islText { 0%, 82% { opacity: 0; } 86%, 97% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes islW { 0% { width: 120px; } 10% { width: 120px; animation-timing-function: var(--spring); } 18% { width: 196px; }
+  60% { width: 196px; animation-timing-function: var(--spring-short); } 66% { width: 236px; animation-timing-function: var(--spring); }
+  74% { width: 206px; } 86% { width: 206px; animation-timing-function: var(--spring); } 94%, 100% { width: 120px; } }
+@keyframes islRec { 0%, 11% { opacity: 0; } 15%, 60% { opacity: 1; } 61.5%, 100% { opacity: 0; } }
+@keyframes islBusy { 0%, 60% { opacity: 0; } 63%, 66% { opacity: 1; } 67%, 100% { opacity: 0; } }
+@keyframes islDone { 0%, 66% { opacity: 0; } 70%, 86% { opacity: 1; } 87.5%, 100% { opacity: 0; } }
+@keyframes islText { 0%, 66% { opacity: 0; } 67%, 96% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes pulse { to { opacity: .55; } }
 @keyframes bar { from { transform: scaleY(.45); } to { transform: scaleY(1.1); } }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) {
   .card { animation: fade 160ms ease-out backwards; } .card * { animation: none !important; }
-  .rec { opacity: 1; } @keyframes fade { from { opacity: 0; } }
+  .rec { opacity: 1; } .isl { width: 196px; } @keyframes fade { from { opacity: 0; } }
 }
 </style></head><body>
 <div class="card">
