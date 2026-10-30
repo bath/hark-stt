@@ -5,6 +5,8 @@ import Foundation
 public struct HarkSettings: @unchecked Sendable {
     public enum Key: String, CaseIterable, Sendable {
         case soundPack, soundVolume, notchIsland, onboardingVersion
+        /// The user (or the first run) has set Start at Login once; do not change it again.
+        case loginItemChosen
     }
 
     public static let soundsOff = "off"

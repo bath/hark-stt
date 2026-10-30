@@ -172,7 +172,7 @@ open build/Hark.app --args --preview                # a fake dictation: island a
 build/Hark.app/Contents/MacOS/Hark --render-island DIR   # each island state as a PNG
 ```
 
-Hark.app writes `~/Library/Application Support/Hark/status.json` every 5 seconds (phase, model, permissions). Its hotkeys work next to the Hammerspoon version's, so both start on ⌥Space: quit one of them when you test the other.
+`build/Hark.app/Contents/MacOS/Hark doctor --json` checks the app with the same contract as `bin/hark doctor --json`; it reads `~/Library/Application Support/Hark/status.json`, which the running app writes every 5 seconds (phase, model, permissions), because only the app itself can see its permissions. `HARK_SLOW_TESTS=1 swift test --filter RealModelDownloadTests` downloads the real model (574 MB), stops, resumes and checks it. Its hotkeys work next to the Hammerspoon version's, so both start on ⌥Space: quit one of them when you test the other.
 
 The terminal app needs the Microphone permission for `hark-dictate`.
 

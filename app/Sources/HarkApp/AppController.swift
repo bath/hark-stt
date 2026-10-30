@@ -11,7 +11,7 @@ let log = Logger(subsystem: "works.hark.Hark", category: "app")
 @MainActor
 final class AppController: NSObject, NSApplicationDelegate {
     enum ModelState: Equatable {
-        case missing, loading, loaded, failed
+        case missing, downloading, loading, loaded, failed
     }
 
     let settings = HarkSettings()
@@ -20,7 +20,10 @@ final class AppController: NSObject, NSApplicationDelegate {
     private(set) var phase = DictationPhase.idle
     private(set) var modelState = ModelState.missing
     private(set) var lastTimings: DictationTimings?
-    private var transcriber: WhisperTranscriber?
+    private let slot = ModelSlot()
+    private let setupModel = SetupModel()
+    private lazy var setup = SetupWindow(model: setupModel)
+    private var download: Task<Void, Never>?
     private var engine: DictationEngine!
     private var menu: StatusMenu!
     private var hotkeys: Hotkeys!
@@ -40,19 +43,19 @@ final class AppController: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        let transcriber = ModelLocation.existing().map { WhisperTranscriber(modelPath: $0.path) }
-        self.transcriber = transcriber
-        engine = DictationEngine(
-            microphone: CoreAudioMicrophone(),
-            transcriber: transcriber ?? MissingModel(),
-            paster: PasteboardPaster()
-        )
+        engine = DictationEngine(microphone: CoreAudioMicrophone(), transcriber: slot, paster: PasteboardPaster())
         menu = StatusMenu(controller: self)
         hotkeys = Hotkeys { [weak self] in self?.press() }
         hotkeysTaken = hotkeys.register()
         if !hotkeysTaken.isEmpty { log.error("Hotkeys taken by another app: \(self.hotkeysTaken.joined(separator: ", "))") }
         listen()
-        loadModel()
+        setup.onRetry = { [weak self] in self?.downloadModel() }
+        if let model = ModelLocation.existing() {
+            loadModel(at: model)
+        } else {
+            downloadModel()
+        }
+        firstRun()
         writeStatus()
         statusTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.writeStatus() }
@@ -69,14 +72,18 @@ final class AppController: NSObject, NSApplicationDelegate {
         case .notDetermined: "not_determined"
         @unknown default: "unknown"
         }
+        var progress: Double?
+        if case let .downloading(step) = setupModel.model { progress = step?.fraction ?? 0 }
         let status = AppStatus(
             version: harkVersion,
             pid: ProcessInfo.processInfo.processIdentifier,
             phase: phase.name,
             model: "\(modelState)",
+            modelProgress: progress,
             accessibility: AXIsProcessTrusted(),
             microphone: microphone,
             hotkeysTaken: hotkeysTaken,
+            loginItem: LoginItem.status,
             updated: Date()
         )
         do { try status.write() } catch { log.error("status: \(String(describing: error))") }
@@ -87,7 +94,8 @@ final class AppController: NSObject, NSApplicationDelegate {
         statusTimer?.invalidate()
         try? FileManager.default.removeItem(at: AppStatus.file)
         engine.shutdown()
-        guard let transcriber else { return .terminateNow }
+        download?.cancel()
+        guard let transcriber = slot.current else { return .terminateNow }
         // whisper.cpp must free its Metal context before the process exits.
         Task {
             await transcriber.unload()
@@ -223,12 +231,67 @@ final class AppController: NSObject, NSApplicationDelegate {
         }
     }
 
-    private func loadModel() {
-        guard let transcriber else {
-            modelState = .missing
-            menu.update()
-            return
+    // MARK: - First run
+
+    /// Shows the setup window while something is missing. The first time
+    /// everything is in place, Hark also starts at login.
+    private func firstRun() {
+        setupModel.refreshPermissions()
+        if !setupModel.isComplete || CommandLine.arguments.contains("--setup") {
+            setup.show()
         }
+        if !settings.has(.loginItemChosen) && setupModel.isComplete {
+            setLoginItem(true)
+        }
+    }
+
+    func showSetup() {
+        setupModel.refreshPermissions()
+        setup.show()
+    }
+
+    var startsAtLogin: Bool { LoginItem.status == "enabled" }
+
+    func setLoginItem(_ on: Bool) {
+        _ = CLI.loginItem(on ? "on" : "off")
+        settings.set(true, for: .loginItemChosen)
+        writeStatus()
+    }
+
+    private func downloadModel() {
+        guard download == nil else { return }
+        let destination = ModelLocation.appSupport
+        let model = ModelDownloader.whisperModel
+        let downloader = ModelDownloader(url: model.url, size: model.size, sha256: model.sha256, destination: destination)
+        modelState = .downloading
+        setupModel.model = .downloading(nil)
+        menu.update()
+        download = Task {
+            do {
+                let setupModel = setupModel
+                try await downloader.download { progress in
+                    Task { @MainActor in
+                        if case .downloading = setupModel.model { setupModel.model = .downloading(progress) }
+                    }
+                }
+                setupModel.model = .present
+                loadModel(at: destination)
+            } catch {
+                log.error("download: \(String(describing: error))")
+                modelState = .failed
+                setupModel.model = .failed((error as? DownloadError)?.description ?? error.localizedDescription)
+                setup.show()
+            }
+            download = nil
+            menu.update()
+            writeStatus()
+            if setupModel.isComplete && !settings.has(.loginItemChosen) { setLoginItem(true) }
+        }
+    }
+
+    private func loadModel(at url: URL) {
+        let transcriber = WhisperTranscriber(modelPath: url.path)
+        slot.fill(transcriber)
         modelState = .loading
         menu.update()
         Task {
@@ -243,10 +306,4 @@ final class AppController: NSObject, NSApplicationDelegate {
             writeStatus()
         }
     }
-}
-
-/// The transcriber when there is no model on disk yet.
-private struct MissingModel: Transcriber {
-    var isLoaded: Bool { false }
-    func transcribe(_ samples: Samples) async throws -> String { throw TranscriberError.modelNotLoaded }
 }
