@@ -180,54 +180,44 @@ p code, li code, dd code {
 .site-nav a { text-decoration: none; color: var(--ink-2); }
 .site-nav a:hover { color: var(--ink); text-decoration: underline; text-decoration-color: var(--rec); }
 
+/* The header island copies the app's Notch Island (hark.lua): it keeps the
+   notch height, grows sideways on a spring, and the script below sets its
+   width and the opacity of each state. */
 .island {
   position: absolute; top: 0; left: 50%; transform: translateX(-50%);
   height: 34px; width: 190px;
-  display: flex; align-items: center; justify-content: center; gap: 10px;
-  padding: 0 16px;
+  padding: 0;
   border: 1px solid var(--pill-edge); border-top: 0;
-  border-radius: 0 0 20px 20px;
+  border-radius: 0 0 14px 14px;
   background: var(--pill); color: var(--pill-ink);
-  font: 600 13px/1 var(--text);
+  font: 600 12px/1 var(--text);
   cursor: pointer;
-  transition: width 420ms cubic-bezier(.2, .8, .2, 1), height 420ms cubic-bezier(.2, .8, .2, 1), border-radius 420ms;
   overflow: hidden;
 }
-.island:focus-visible { outline-offset: 2px; border-radius: 0 0 20px 20px; }
-.island[data-state="listening"],
-.island[data-state="transcribing"],
-.island[data-state="pasted"] { width: 250px; height: 40px; border-radius: 0 0 22px 22px; }
-.island .st { display: none; align-items: center; gap: 9px; width: 100%; justify-content: center; white-space: nowrap; }
-.island[data-state="idle"] .st-idle,
-.island[data-state="listening"] .st-listening,
-.island[data-state="transcribing"] .st-transcribing,
-.island[data-state="pasted"] .st-pasted { display: flex; }
-.island .st-idle { color: var(--pill-mute); font-weight: 500; }
-.island .st-listening { justify-content: space-between; }
-
-/* Pill parts, shared by the header island and the step figures */
-.rec-dot { width: 8px; height: 8px; border-radius: 50%; background: #ff4a3d; flex: none; }
-.timer { font-variant-numeric: tabular-nums; font-family: var(--mono); font-size: 13px; }
-.bars { display: inline-flex; align-items: center; gap: 2px; height: 16px; }
-.bars i { display: block; width: 3px; height: 100%; border-radius: 2px; background: #ff6b5f; transform: scaleY(.3); transform-origin: center; }
-.live .bars i { animation: talk 900ms ease-in-out infinite; }
-.live .bars i:nth-child(2) { animation-delay: -200ms; animation-duration: 700ms; }
-.live .bars i:nth-child(3) { animation-delay: -450ms; animation-duration: 1100ms; }
-.live .bars i:nth-child(4) { animation-delay: -100ms; animation-duration: 800ms; }
-.live .bars i:nth-child(5) { animation-delay: -600ms; animation-duration: 1000ms; }
-@keyframes talk { 0%, 100% { transform: scaleY(.25); } 50% { transform: scaleY(1); } }
-.bars.still i:nth-child(1) { transform: scaleY(.4); }
-.bars.still i:nth-child(2) { transform: scaleY(.8); }
-.bars.still i:nth-child(3) { transform: scaleY(1); }
-.bars.still i:nth-child(4) { transform: scaleY(.6); }
-.bars.still i:nth-child(5) { transform: scaleY(.35); }
-.spinner {
-  width: 13px; height: 13px; border-radius: 50%; flex: none;
-  border: 2px solid rgba(255, 255, 255, .25); border-top-color: #fff;
-  animation: spin 800ms linear infinite;
+.island:focus-visible { outline-offset: 2px; }
+.island .st {
+  position: absolute; inset: 0; padding: 0 14px;
+  display: flex; align-items: center; justify-content: space-between;
+  white-space: nowrap; opacity: 0;
 }
-@keyframes spin { to { transform: rotate(360deg); } }
-.check { width: 16px; height: 16px; flex: none; color: #34d27b; }
+.island .st-idle { justify-content: center; color: var(--pill-mute); font-weight: 500; opacity: 1; }
+.island .st-idle .short { display: none; }
+
+/* Pill parts, shared by the header island and the step figures. Sizes and
+   colors are the app's: a 4 pt red dot, 2.6 pt bars, a 250° spinner arc. */
+.rec-dot { width: 8px; height: 8px; border-radius: 50%; background: #ff453b; flex: none; }
+.rec-grp { display: inline-flex; align-items: center; gap: 6px; }
+.timer { font-variant-numeric: tabular-nums; }
+.lbl { opacity: .92; }
+.bars { display: inline-flex; flex-direction: row-reverse; align-items: center; gap: 2.4px; height: 100%; margin-right: 3px; }
+.bars i { display: block; width: 2.6px; height: 3px; border-radius: 1.3px; background: #ff453b; }
+.bars.still i:nth-child(1) { height: 8px; }
+.bars.still i:nth-child(2) { height: 15px; }
+.bars.still i:nth-child(3) { height: 18px; }
+.bars.still i:nth-child(4) { height: 11px; }
+.bars.still i:nth-child(5) { height: 6px; }
+.spinner { width: 14px; height: 14px; flex: none; color: #fff; }
+.check { width: 14px; height: 14px; flex: none; color: #30d159; }
 
 /* Hero */
 .hero {
@@ -338,19 +328,22 @@ h1 .mark { display: block; color: var(--ink-2); font-weight: 700; }
 .step h3 { font-size: 1.25rem; font-weight: 700; }
 .step p { margin: 8px 0 0; color: var(--ink-2); max-width: 52ch; }
 .step .n { font: 500 13px/1 var(--mono); color: var(--ink-2); display: block; margin-bottom: 10px; }
+/* The step figures use the app's wing widths (64, 96 and 72 pt on each side)
+   around a narrower notch, so Transcribing is the widest, as in the app. */
 .pill {
-  display: inline-flex; align-items: center; gap: 10px; height: 40px; width: 250px; max-width: 100%;
-  padding: 0 16px; background: var(--pill); color: var(--pill-ink); border: 1px solid var(--pill-edge); border-top: 0;
-  border-radius: 0 0 22px 22px; font: 600 13px/1 var(--text); white-space: nowrap;
+  --core: 78px; --wing: 64px;
+  display: flex; align-items: center; justify-content: space-between; height: 34px;
+  width: calc(var(--core) + 2 * var(--wing)); max-width: 100%;
+  padding: 0 14px; background: var(--pill); color: var(--pill-ink); border: 1px solid var(--pill-edge); border-top: 0;
+  border-radius: 0 0 14px 14px; font: 600 12px/1 var(--text); white-space: nowrap;
   position: relative;
 }
 .pill::before {
   content: ""; position: absolute; left: -1px; right: -1px; top: -6px; height: 6px; background: var(--pill);
   border-left: 1px solid var(--pill-edge); border-right: 1px solid var(--pill-edge);
 }
-.pill.listening { justify-content: space-between; }
-.pill.center { justify-content: center; }
-.pill .grp { display: inline-flex; align-items: center; gap: 9px; }
+.pill.transcribing { --wing: 96px; }
+.pill.pasted { --wing: 72px; }
 
 /* Privacy */
 .spec { margin: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); border-top: 1px solid var(--rule); }
@@ -403,6 +396,11 @@ h1 .mark { display: block; color: var(--ink-2); font-weight: 700; }
 .foot strong { color: var(--ink); font-family: var(--display); font-weight: 800; font-size: 18px; margin-right: 8px; }
 
 /* Responsive */
+/* Below this width the open island (up to 382 px) reaches the nav, so the
+   header sits under the notch, as a Mac menu bar keeps clear of it. */
+@media (max-width: 1240px) {
+  .site-head { height: auto; padding-top: 46px; padding-bottom: 10px; }
+}
 @media (max-width: 980px) {
   .install .sec-head { grid-template-columns: minmax(0, 1fr); }
   .install-col .cols { grid-template-columns: minmax(0, 1fr); }
@@ -417,6 +415,8 @@ h1 .mark { display: block; color: var(--ink-2); font-weight: 700; }
   .site-head { flex-wrap: wrap; height: auto; padding-top: 52px; padding-bottom: 8px; }
   .site-nav { gap: 16px; font-size: 14px; }
   .site-nav .wide { display: none; }
+  .island .st-idle .long { display: none; }
+  .island .st-idle .short { display: inline; }
   .step { grid-template-columns: minmax(0, 1fr); gap: 14px; }
   .spec { grid-template-columns: minmax(0, 1fr); }
   .spec div, .spec div:nth-child(odd), .spec div:nth-child(even) { padding: 18px 0; border-left: 0; }
@@ -434,7 +434,6 @@ h1 .mark { display: block; color: var(--ink-2); font-weight: 700; }
   *, *::before, *::after { animation: none !important; transition: none !important; }
   .screen video, .vid-toggle { display: none; }
   .screen .still { display: block; }
-  .bars i { transform: scaleY(.6); }
 }
 </style>
 </head>
@@ -445,15 +444,19 @@ h1 .mark { display: block; color: var(--ink-2); font-weight: 700; }
 
 <header class="wrap site-head">
   <a class="wordmark" href="./" aria-label="Hark home"><span class="dot" aria-hidden="true"></span>Hark</a>
-  <button class="island" type="button" data-state="idle" aria-label="Play the Notch Island sequence">
-    <span class="st st-idle">Click to try the island</span>
-    <span class="st st-listening live" aria-hidden="true">
-      <span style="display:inline-flex;align-items:center;gap:9px"><span class="rec-dot"></span><span class="timer" data-timer>0:00</span></span>
+  <button class="island" type="button" aria-label="Play the Notch Island: click to start, click again to stop">
+    <span class="st st-idle"><span class="long">Click to try the island</span><span class="short">Tap to try</span></span>
+    <span class="st st-listening" aria-hidden="true">
+      <span class="rec-grp"><span class="rec-dot"></span><span class="timer" data-timer>0:00</span></span>
       <span class="bars"><i></i><i></i><i></i><i></i><i></i></span>
     </span>
-    <span class="st st-transcribing" aria-hidden="true"><span class="spinner"></span>Transcribing</span>
+    <span class="st st-transcribing" aria-hidden="true">
+      <svg class="spinner" viewBox="-7 -7 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle r="6" stroke-dasharray="26.18 100"/></svg>
+      <span class="lbl">Transcribing</span>
+    </span>
     <span class="st st-pasted" aria-hidden="true">
-      <svg class="check" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3L13 4.5"/></svg>Pasted
+      <svg class="check" viewBox="-7 -7 14 14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M-5 .5l3.5 3.5 7-7.5"/></svg>
+      <span class="lbl">Pasted</span>
     </span>
   </button>
   <span class="sr-only" aria-live="polite" data-island-status></span>
@@ -566,7 +569,7 @@ h1 .mark { display: block; color: var(--ink-2); font-weight: 700; }
       <ol class="steps">
         <li class="step">
           <div class="pill listening" role="img" aria-label="The island while you talk: a red dot, a timer at 0:04 and voice bars">
-            <span class="grp"><span class="rec-dot"></span><span class="timer">0:04</span></span>
+            <span class="rec-grp"><span class="rec-dot"></span><span class="timer">0:04</span></span>
             <span class="bars still"><i></i><i></i><i></i><i></i><i></i></span>
           </div>
           <div>
@@ -576,8 +579,9 @@ h1 .mark { display: block; color: var(--ink-2); font-weight: 700; }
           </div>
         </li>
         <li class="step">
-          <div class="pill center" role="img" aria-label="The island after you stop: a spinner and the word Transcribing">
-            <span class="spinner"></span>Transcribing
+          <div class="pill transcribing" role="img" aria-label="The island after you stop: a spinner and the word Transcribing">
+            <svg class="spinner" viewBox="-7 -7 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle r="6" stroke-dasharray="26.18 100" transform="rotate(-150)"/></svg>
+            <span class="lbl">Transcribing</span>
           </div>
           <div>
             <span class="n">2</span>
@@ -586,8 +590,9 @@ h1 .mark { display: block; color: var(--ink-2); font-weight: 700; }
           </div>
         </li>
         <li class="step">
-          <div class="pill center" role="img" aria-label="The island when the text is in: a green check and the word Pasted">
-            <svg class="check" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.5"/></svg>Pasted
+          <div class="pill pasted" role="img" aria-label="The island when the text is in: a green check and the word Pasted">
+            <svg class="check" viewBox="-7 -7 14 14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M-5 .5l3.5 3.5 7-7.5"/></svg>
+            <span class="lbl">Pasted</span>
           </div>
           <div>
             <span class="n">3</span>
@@ -784,26 +789,117 @@ h1 .mark { display: block; color: var(--ink-2); font-weight: 700; }
     });
   });
 
-  /* Header island: a short replay of listening, transcribing, pasted */
+  /* Header island: the app's Notch Island model from hark.lua (islandStep,
+     islandLevel, previewDictation), with the same springs, fades and level
+     mapping. Click starts a dictation with simulated speech; click again, or
+     wait, to stop. Transcribing lasts as long as Whisper takes for a few
+     seconds of speech on a recent Mac. */
+  var WINGS = { recording: 64, transcribing: 96, done: 72 };
+  var HOLD_DONE = 1.2, AUTO_STOP = 3.2, WHISPER = 0.3;
   var island = document.querySelector('.island');
-  var timer = island.querySelector('[data-timer]');
   var status = document.querySelector('[data-island-status]');
-  var timers = [];
-  function clear() { timers.forEach(clearTimeout); timers = []; }
-  function set(state, label) { island.setAttribute('data-state', state); status.textContent = label || ''; }
-  function run() {
-    clear();
-    set('listening', 'Listening');
-    timer.textContent = '0:00';
-    for (var s = 1; s <= 3; s++) {
-      (function (s) { timers.push(setTimeout(function () { timer.textContent = '0:0' + s; }, s * 1000)); })(s);
-    }
-    timers.push(setTimeout(function () { set('transcribing', 'Transcribing'); }, 3400));
-    timers.push(setTimeout(function () { set('pasted', 'Pasted'); }, 4800));
-    timers.push(setTimeout(function () { set('idle', ''); }, 6600));
+  var part = function (s) { return island.querySelector(s); };
+  var els = { idle: part('.st-idle'), rec: part('.st-listening'), proc: part('.st-transcribing'), done: part('.st-pasted') };
+  var timerEl = part('[data-timer]'), dot = part('.rec-dot'), spinner = part('.spinner circle');
+  var barEls = island.querySelectorAll('.bars i');
+  var H = 34;
+  var st = { mode: 'idle', idle: 1, rec: 0, proc: 0, done: 0, level: 0, target: 0, levelAt: 0, recStart: 0, bands: [0, 0, 0, 0, 0] };
+  var w = { x: 0, v: 0 }, core = 190, frame = 0, last = 0, pending = [], speech = 0;
+  function now() { return performance.now() / 1000; }
+  function clamp(x) { return Math.max(0, Math.min(1, x)); }
+  function measure() { core = Math.max(120, Math.min(190, window.innerWidth - 216)); if (st.mode === 'idle') w.x = core; }
+  measure();
+  window.addEventListener('resize', function () { measure(); draw(now()); });
+
+  function spring(s, target, dt, stiffness, zeta) {
+    var damping = 2 * zeta * Math.sqrt(stiffness), steps = Math.max(1, Math.ceil(dt / 0.008)), h = dt / steps;
+    for (var i = 0; i < steps; i++) { s.v += (stiffness * (target - s.x) - damping * s.v) * h; s.x += s.v * h; }
   }
-  island.addEventListener('click', run);
-  if (!reduce.matches) timers.push(setTimeout(run, 900));
+  function draw(t) {
+    island.style.width = w.x.toFixed(1) + 'px';
+    var open = clamp((w.x - core) / 80);
+    var a = open * clamp(Math.max(st.rec, st.proc, st.done) * 1.3 - 0.15);
+    els.idle.style.opacity = (st.idle * clamp(1 - (w.x - core) / 40)).toFixed(3);
+    els.rec.style.opacity = (a * st.rec).toFixed(3);
+    els.proc.style.opacity = (a * st.proc).toFixed(3);
+    els.done.style.opacity = (a * st.done).toFixed(3);
+    if (st.rec > 0.01) {
+      var secs = Math.floor(st.mode === 'recording' ? t - st.recStart : st.elapsed || 0);
+      timerEl.textContent = Math.floor(secs / 60) + ':' + ('0' + secs % 60).slice(-2);
+      dot.style.opacity = reduce.matches ? 1 : (0.55 + 0.45 * (0.5 + 0.5 * Math.cos(t * 2 * Math.PI))).toFixed(3);
+      for (var i = 0; i < barEls.length; i++) barEls[i].style.height = (3 + st.bands[i] * (H - 16)).toFixed(1) + 'px';
+    }
+    if (st.proc > 0.01) spinner.setAttribute('transform', 'rotate(' + (reduce.matches ? 0 : (t * 340) % 360).toFixed(1) + ')');
+  }
+  function step() {
+    var t = now(), dt = Math.min(0.05, t - (last || t));
+    last = t;
+    var wing = WINGS[st.mode];
+    var targetW = wing ? core + 2 * wing : core;
+    if (reduce.matches) { w.x = targetW; w.v = 0; } else spring(w, targetW, dt, 260, 0.62);
+    /* The old state fades out faster than the new one fades in, so labels never overlap. */
+    var fadeIn = 1 - Math.exp(-dt * 12), fadeOut = 1 - Math.exp(-dt * 40);
+    var modes = { idle: 'idle', rec: 'recording', proc: 'transcribing', done: 'done' };
+    for (var k in modes) {
+      var on = st.mode === modes[k];
+      st[k] = reduce.matches ? (on ? 1 : 0) : st[k] + ((on ? 1 : 0) - st[k]) * (on ? fadeIn : fadeOut);
+    }
+    if (st.mode === 'recording') st.elapsed = t - st.recStart;
+    var target = (st.mode === 'recording' && t - st.levelAt < 0.25) ? st.target : 0;
+    st.level += (target - st.level) * (1 - Math.exp(-dt * 18));
+    for (var i = 0; i < 5; i++) {
+      var n = i + 1;
+      var wobble = Math.abs(Math.sin(t * (5.3 + n * 1.37) + n * 1.9) * Math.cos(t * (2.1 + n * 0.71)));
+      st.bands[i] += (st.level * (0.4 + 0.6 * wobble) - st.bands[i]) * (1 - Math.exp(-dt * 20));
+    }
+    draw(t);
+    var settled = Math.abs(w.x - core) < 0.5 && Math.abs(w.v) < 2 && st.idle > 0.99;
+    frame = (!wing && settled) ? 0 : requestAnimationFrame(step);
+    if (!frame) { last = 0; draw(t); }
+  }
+  /* Recorder levels arrive as RMS (0–1). Room noise sits near -50 dB and close
+     speech near -15 dB, so map that range onto the bars. */
+  function level(rms) {
+    var db = 20 * Math.log10(Math.max(rms, 1e-6));
+    st.target = clamp((db + 50) / 35);
+    st.levelAt = now();
+  }
+  function later(fn, seconds) { pending.push(setTimeout(fn, seconds * 1000)); }
+  function setMode(mode, label) {
+    st.mode = mode;
+    status.textContent = label || '';
+    if (mode === 'recording') { st.recStart = now(); st.elapsed = 0; st.target = 0; }
+    if (!frame) frame = requestAnimationFrame(step);
+  }
+  function stop() {
+    pending.forEach(clearTimeout); pending = [];
+    clearInterval(speech);
+    setMode('transcribing', 'Transcribing');
+    later(function () { setMode('done', 'Pasted'); }, WHISPER);
+    later(function () { setMode('idle', ''); }, WHISPER + HOLD_DONE);
+  }
+  function start() {
+    pending.forEach(clearTimeout); pending = [];
+    setMode('recording', 'Listening');
+    var nextChange = 0, rms = 0;
+    speech = setInterval(function () {
+      var t = now();
+      if (t > nextChange) {
+        var pause = Math.random() < 0.2;
+        rms = pause ? 0.003 : 0.01 + Math.random() * 0.14;
+        nextChange = t + (pause ? 0.3 : 0.08 + Math.random() * 0.17);
+      }
+      level(rms);
+    }, 1000 / 30);
+    later(stop, AUTO_STOP);
+  }
+  /* Like F5: a press while recording stops; a press while Transcribing or Pasted shows does nothing. */
+  island.addEventListener('click', function () {
+    if (st.mode === 'recording') stop();
+    else if (st.mode === 'idle') start();
+  });
+  draw(now());
+  if (!reduce.matches) setTimeout(function () { if (st.mode === 'idle') start(); }, 900);
 })();
 </script>
 </body>
