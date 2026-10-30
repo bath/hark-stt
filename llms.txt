@@ -26,7 +26,7 @@ For the Hammerspoon version, an agent runs the installer with `--json`, then rep
 - Human steps macOS requires: Hammerspoon under Privacy & Security → Microphone and → Accessibility; for F5, Karabiner's driver, Input Monitoring and the rule "F5 / Dictation key → F18".
 - Why Hark instead of the dictation built into macOS: private (the voice never leaves the Mac, no account, no telemetry), accurate (Whisper large-v3-turbo, with punctuation and capitals; handles names, technical words and long, fast speech), fast (the model stays loaded; on an M5 Pro, 15 s of speech becomes text in about 0.3 s, and the mic starts about 63 ms after F5).
 - Hark.app: one Swift app with whisper.cpp in the same process. The model (574 MB) downloads on first run with a checksum check. It maps the dictation key (F5) with hidutil, needs no driver or password, starts at login, and has the same 🎙 menu, Notch Island and sounds.
-- Network: audio and text never leave the Mac (the Hammerspoon version sends them only to 127.0.0.1). The installer downloads the ~550 MB model once from Hugging Face. The 🎙 menu item Check for Updates asks the GitHub API for the latest release, only when the user clicks it.
+- Network: audio and text never leave the Mac (the Hammerspoon version sends them only to 127.0.0.1). The installer downloads the 574 MB model once from Hugging Face. The 🎙 menu item Check for Updates asks the GitHub API for the latest release, only when the user clicks it.
 - The mic is off until the hotkey and is released when recording stops.
 - Text arrives after the user stops talking, in one paste. The last transcript stays on the clipboard.
 - Notch Island: the MacBook notch shows recording, "Transcribing" and "Pasted". 26 sound packs mark each step.

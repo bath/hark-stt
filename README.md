@@ -75,7 +75,7 @@ The dictation built into macOS mishears words, and you cannot tell where your vo
 The installer:
 
 1. Installs `whisper.cpp`, [Hammerspoon](https://www.hammerspoon.org) and [Karabiner-Elements](https://karabiner-elements.pqrs.org) with Homebrew.
-2. Downloads the Whisper model (about 550 MB) to `~/.cache/whisper`.
+2. Downloads the Whisper model (574 MB) to `~/.cache/whisper`.
 3. Builds the native recorder helper and the sound library into `~/.hammerspoon/hark`.
 4. Starts `whisper-server` as a launchd agent, so it stays up across crashes and reboots.
 5. Copies the Karabiner rule into place and runs `hark doctor`.
