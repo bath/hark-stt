@@ -8,6 +8,8 @@
 	<string>Hark</string>
 	<key>CFBundleExecutable</key>
 	<string>Hark</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon</string>
 	<key>CFBundleIdentifier</key>
 	<string>works.hark.Hark</string>
 	<key>CFBundleInfoDictionaryVersion</key>

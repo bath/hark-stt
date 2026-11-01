@@ -260,6 +260,7 @@ HARK_SLOW_TESTS=1 swift test -c release --filter WhisperSlowTests   # real whisp
 swift run -c release hark-dictate                   # Return to start and stop; prints text and timings
 swift run -c release hark-dictate --file clip.wav   # Whisper time for a 16 kHz mono WAV
 scripts/build-app.sh                                # builds app/build/Hark.app
+scripts/make-icon.sh                                # app/Icon/AppIcon.svg → Resources/AppIcon.icns (needs rsvg-convert)
 open build/Hark.app --args --preview                # a fake dictation: island and sounds, no mic
 build/Hark.app/Contents/MacOS/Hark --render-island DIR   # each island state as a PNG
 ```
