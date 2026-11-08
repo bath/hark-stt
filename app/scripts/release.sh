@@ -71,12 +71,16 @@ if [ "$DRY_RUN" = 0 ]; then
 fi
 
 echo "==> Disk image"
+# dmgbuild writes the Finder window (background, icon places) without Finder,
+# so this also works on a CI runner.
 STAGE="$(mktemp -d)"
 trap 'rm -rf "$STAGE"' EXIT
-ditto "$APP" "$STAGE/Hark.app"
-ln -s /Applications "$STAGE/Applications"
+python3 -m venv "$STAGE/venv"
+"$STAGE/venv/bin/pip" install --quiet --disable-pip-version-check "dmgbuild==1.6.5"
 rm -f "$DMG"
-hdiutil create -quiet -volname "Hark" -srcfolder "$STAGE" -fs HFS+ -format UDZO "$DMG"
+"$STAGE/venv/bin/dmgbuild" -s "$APP_DIR/dmg/settings.py" \
+  -D app="$APP" -D background="$APP_DIR/dmg/background.tiff" \
+  -D volume_icon="$APP_DIR/Resources/AppIcon.icns" "Hark" "$DMG" >/dev/null
 codesign --force --timestamp --sign "$IDENTITY" "$DMG"
 
 if [ "$DRY_RUN" = 0 ]; then
