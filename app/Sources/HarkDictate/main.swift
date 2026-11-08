@@ -30,7 +30,7 @@ func err(_ line: String) {
     FileHandle.standardError.write(Data((line + "\n").utf8))
 }
 
-let modelPath = option("--model") ?? ModelLocation.legacy.path
+let modelPath = option("--model") ?? ModelLocation.appSupport.path
 guard FileManager.default.fileExists(atPath: modelPath) else {
     err("No model at \(modelPath). Pass --model PATH.")
     exit(1)
