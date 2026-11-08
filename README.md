@@ -34,8 +34,6 @@ Click into any text field, press F5 (or ⌥Space), talk, and press it again. You
 
 The 🎙 menu bar icon has the sound packs, the Notch Island switch and Check for Updates.
 
-If you have the old Hammerspoon version, open Hark.app. It copies your settings and removes the old version after your first dictation.
-
 ## Uninstall
 
 ```sh
