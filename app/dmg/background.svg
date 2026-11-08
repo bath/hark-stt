@@ -7,9 +7,12 @@
       <stop offset="1" stop-color="#e7ebef"/>
     </linearGradient>
     <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
-      <stop offset="0" stop-color="#d63c30" stop-opacity="0.16"/>
-      <stop offset="1" stop-color="#d63c30" stop-opacity="0"/>
+      <stop offset="0" stop-color="#7b5cff" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#7b5cff" stop-opacity="0"/>
     </radialGradient>
+    <linearGradient id="arrow" gradientUnits="userSpaceOnUse" x1="258" y1="0" x2="384" y2="0">
+      <stop offset="0" stop-color="#36c6ff"/><stop offset="0.5" stop-color="#7b5cff"/><stop offset="1" stop-color="#ff4f9a"/>
+    </linearGradient>
     <radialGradient id="well" cx="0.5" cy="0.5" r="0.5">
       <stop offset="0" stop-color="#101318" stop-opacity="0.06"/>
       <stop offset="1" stop-color="#101318" stop-opacity="0"/>
@@ -22,7 +25,7 @@
   <text x="320" y="62" text-anchor="middle" font-family="Helvetica Neue" font-weight="700" font-size="24" letter-spacing="-0.3" fill="#101318">Drag Hark to Applications</text>
   <text x="320" y="88" text-anchor="middle" font-family="Helvetica Neue" font-size="14" fill="#5b646e">Private dictation that runs on your Mac.</text>
 
-  <g fill="none" stroke="#d63c30" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+  <g fill="none" stroke="url(#arrow)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
     <path d="M258 206 C 300 178, 344 178, 382 202"/>
     <path d="M364 188 L 384 203 L 362 214"/>
   </g>
