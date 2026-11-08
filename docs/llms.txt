@@ -1,32 +1,22 @@
 # Hark
 
-> Hark is better, private, on-device dictation for macOS on Apple silicon. Press F5 (or ⌥Space), talk, press it again, and the text is pasted where the cursor is, in any app. Whisper large-v3-turbo runs locally through whisper.cpp. No cloud, no account, no telemetry. MIT license. Repo: https://github.com/bath/hark-stt
+> Hark is private, on-device dictation for macOS on Apple silicon. Press F5 (or ⌥Space), talk, press it again, and the text is pasted where the cursor is, in any app. Whisper large-v3-turbo runs locally through whisper.cpp inside Hark.app. No cloud, no account, no telemetry. MIT license. Repo: https://github.com/bath/hark-stt
 
-Hark comes as a native app, Hark.app (download from the latest GitHub release when it has `Hark-X.Y.Z.dmg`, or `brew install --cask bath/tap/hark`; two permission clicks: Microphone and Accessibility; no Homebrew, Hammerspoon or Karabiner needed), and as the original Hammerspoon version. AGENTS.md says how to tell which to install. For Hark.app, an agent repeats `/Applications/Hark.app/Contents/MacOS/Hark doctor --json` and follows `next_step`, in the same way as below.
-
-For the Hammerspoon version, an agent runs the installer with `--json`, then repeats `~/.hammerspoon/hark/bin/hark doctor --json` and follows `next_step` until `ok` is true. When `next_step.needs_human` is true, the agent runs `next_step.command` to open the right System Settings pane and tells the user `next_step.fix`.
-
-- Install: `curl -fsSL https://hark.works/install.sh | bash -s -- --json` (add `--no-karabiner` to use ⌥Space only)
-- Install with Homebrew: `brew install bath/tap/hark && hark setup --json`
-- Update: `hark update --json` (Homebrew install) or `~/.hammerspoon/hark/bin/hark update --json`. Version 1.0.0 has no `update`; run the installer again instead.
-- Check: `~/.hammerspoon/hark/bin/hark doctor --json`
-- Open a settings pane: `~/.hammerspoon/hark/bin/hark open-settings accessibility|microphone|input-monitoring|karabiner|dictation`
-- Remove: `~/.hammerspoon/hark/bin/hark uninstall --yes`
+Install Hark.app with `brew install --cask bath/tap/hark`, or `curl -fsSL https://hark.works/install.sh | bash`, or download `Hark-X.Y.Z.dmg` from the latest GitHub release. Then an agent repeats `/Applications/Hark.app/Contents/MacOS/Hark doctor --json` and follows `next_step` until `ok` is true. When `next_step.needs_human` is true, the agent runs `next_step.command` to open the right System Settings pane and tells the user `next_step.fix`.
 
 ## Docs
 
-- [AGENTS.md](https://hark.works/AGENTS.md): step-by-step install and update for AI agents, the doctor report format, and how to work on the repo
-- [README](https://raw.githubusercontent.com/bath/hark-stt/main/README.md): features, the menu, sound packs, how it works, FAQ, troubleshooting
-- [install.sh](https://hark.works/install.sh): the installer
-- [bin/hark](https://raw.githubusercontent.com/bath/hark-stt/main/bin/hark): the doctor, open-settings and uninstall CLI
+- [AGENTS.md](https://hark.works/AGENTS.md): step-by-step install, update and removal for AI agents, the doctor report format, and how to work on the repo
+- [README](https://raw.githubusercontent.com/bath/hark-stt/main/README.md): install, use, uninstall
+- [install.sh](https://hark.works/install.sh): installs Hark.app from the latest release
 
 ## Facts
 
-- Requirements: macOS on Apple silicon, Homebrew, Apple Command Line Tools. The installer adds whisper.cpp, Hammerspoon and (unless `--no-karabiner`) Karabiner-Elements.
-- Human steps macOS requires: Hammerspoon under Privacy & Security → Microphone and → Accessibility; for F5, Karabiner's driver, Input Monitoring and the rule "F5 / Dictation key → F18".
+- Requirements: macOS 14 or later on Apple silicon.
+- Human steps macOS requires: Allow the microphone, and turn on Hark under Privacy & Security → Accessibility.
 - Why Hark instead of the dictation built into macOS: private (the voice never leaves the Mac, no account, no telemetry), accurate (Whisper large-v3-turbo, with punctuation and capitals; handles names, technical words and long, fast speech), fast (the model stays loaded; on an M5 Pro, 15 s of speech becomes text in about 0.3 s, and the mic starts about 63 ms after F5).
-- Hark.app: one Swift app with whisper.cpp in the same process. The model (574 MB) downloads on first run with a checksum check. It maps the dictation key (F5) with hidutil, needs no driver or password, starts at login, and has the same 🎙 menu, Notch Island and sounds.
-- Network: audio and text never leave the Mac (the Hammerspoon version sends them only to 127.0.0.1). The installer downloads the 574 MB model once from Hugging Face. The 🎙 menu item Check for Updates asks the GitHub API for the latest release, only when the user clicks it.
+- Hark.app is one Swift app with whisper.cpp in the same process. The model (574 MB) downloads on first run with a checksum check. It maps the dictation key (F5) with hidutil, needs no driver or password, and can start at login.
+- Network: audio and text never leave the Mac. The app downloads the model once from Hugging Face. 🎙 → Check for Updates asks the GitHub API for the latest release, only when the user clicks it.
 - The mic is off until the hotkey and is released when recording stops.
 - Text arrives after the user stops talking, in one paste. The last transcript stays on the clipboard.
 - Notch Island: the MacBook notch shows recording, "Transcribing" and "Pasted". 26 sound packs mark each step.
@@ -34,4 +24,3 @@ For the Hammerspoon version, an agent runs the installer with `--json`, then rep
 ## Optional
 
 - [Website](https://hark.works/)
-- [Uninstall and customize](https://github.com/bath/hark-stt#customize)

@@ -41,8 +41,8 @@
   "image": "https://hark.works/hark-demo-poster.png",
   "operatingSystem": "macOS",
   "applicationCategory": "UtilitiesApplication",
-  "softwareRequirements": "macOS on Apple silicon, Homebrew, Apple Command Line Tools",
-  "installUrl": "https://hark.works/install.sh",
+  "softwareRequirements": "macOS 14 or later on Apple silicon",
+  "installUrl": "https://github.com/bath/hark-stt/releases/latest",
   "offers": {
     "@type": "Offer",
     "price": "0",
@@ -181,7 +181,7 @@ p code, li code, dd code {
 .site-nav a { text-decoration: none; color: var(--ink-2); }
 .site-nav a:hover { color: var(--ink); text-decoration: underline; text-decoration-color: var(--rec); }
 
-/* The header island copies the app's Notch Island (hark.lua): it keeps the
+/* The header island copies the app's Notch Island (app/Sources/HarkApp/NotchIsland.swift): it keeps the
    notch height, grows sideways on a spring, and the script below sets its
    width and the opacity of each state. */
 .island {
@@ -396,10 +396,6 @@ h1 .mark { display: block; color: var(--ink-2); font-weight: 700; }
 .foot nav { display: flex; flex-wrap: wrap; gap: 8px 22px; }
 .foot strong { color: var(--ink); font-family: var(--display); font-weight: 800; font-size: 18px; margin-right: 8px; }
 
-/* Hark.app: shown when the latest release has the disk image (the script sets .has-app). */
-.app-only { display: none !important; }
-.has-app .app-only { display: revert !important; }
-.has-app .old-only { display: none !important; }
 .download { display: inline-block; margin-top: 4px; font: 600 15px var(--text); text-decoration: none; border-radius: 999px;
   padding: 10px 20px; background: var(--btn); color: var(--btn-ink); }
 
@@ -551,11 +547,10 @@ h1 .mark { display: block; color: var(--ink-2); font-weight: 700; }
     <div class="sec-grid">
       <div class="sec-head">
         <h2 id="install-h">Install</h2>
-        <p class="old-only">Ask your coding agent to do it, or run one command yourself. Either way, macOS asks you for a few permission clicks at the end.</p>
-        <p class="app-only">Download the app, or ask your coding agent to install it. Either way, macOS asks you for two permission clicks.</p>
+        <p>Download the app, or ask your coding agent to install it. Either way, macOS asks you for two permission clicks.</p>
       </div>
       <div class="install-grid">
-        <div class="install-col app app-only">
+        <div class="install-col app">
           <div class="cols">
           <div>
           <span class="tag">Recommended</span>
@@ -576,7 +571,6 @@ h1 .mark { display: block; color: var(--ink-2); font-weight: 700; }
         <div class="install-col agent">
           <div class="cols">
           <div>
-          <span class="tag old-only">Recommended</span>
           <h3>Install with your AI agent</h3>
           <p>Paste this prompt into Claude Code, Codex, Cursor or another coding agent.</p>
           </div>
@@ -586,23 +580,6 @@ h1 .mark { display: block; color: var(--ink-2); font-weight: 700; }
             <pre id="agent-prompt">Install Hark (https://hark.works) on this Mac. Read https://hark.works/AGENTS.md and follow it step by step.</pre>
           </div>
           <p class="muted">The agent follows <a href="https://github.com/bath/hark-stt/blob/main/AGENTS.md">AGENTS.md</a>. macOS permission switches still need your own clicks. <a href="#setup">Setup</a> lists them.</p>
-          </div>
-          </div>
-        </div>
-        <div class="install-col diy">
-          <div class="cols">
-          <div>
-          <span class="tag">Terminal</span>
-          <h3>Install it yourself</h3>
-          <p class="old-only">Run this in Terminal.</p>
-          <p class="app-only">The Hammerspoon version, with one command in Terminal.</p>
-          </div>
-          <div>
-          <div class="cmd">
-            <div class="cmd-bar"><span>Terminal</span><button class="copy" type="button" data-copy="curl-cmd" aria-label="Copy the install command">Copy</button></div>
-            <pre id="curl-cmd">curl -fsSL https://hark.works/install.sh | bash</pre>
-          </div>
-          <p class="muted">You need macOS on Apple silicon, Homebrew and Apple Command Line Tools. Then give the permissions in <a href="#setup">Setup</a>.</p>
           </div>
           </div>
         </div>
@@ -668,15 +645,15 @@ h1 .mark { display: block; color: var(--ink-2); font-weight: 700; }
         <dl class="spec">
           <div>
             <dt>Network</dt>
-            <dd>Hark sends your audio and text only to a server on your own Mac (127.0.0.1). The installer downloads the model (574 MB) from Hugging Face once. Hark asks GitHub for the latest version only when you click Check for Updates.</dd>
+            <dd>Your audio and text never leave your Mac. On first run, Hark downloads the model (574 MB) from Hugging Face once. It asks GitHub for the latest version only when you click Check for Updates.</dd>
           </div>
           <div>
-            <dt>Model server</dt>
-            <dd>A launchd agent keeps the model loaded in a local server, so there is no start-up wait.</dd>
+            <dt>Model</dt>
+            <dd>Hark keeps the model loaded in memory, so there is no start-up wait.</dd>
           </div>
           <div>
             <dt>Microphone</dt>
-            <dd>The mic is off until you press F5. A native Core Audio helper starts it on F5 and releases it when you stop.</dd>
+            <dd>The mic is off until you press F5. Hark starts it on F5 and releases it when you stop.</dd>
           </div>
           <div>
             <dt>Account</dt>
@@ -703,7 +680,7 @@ h1 .mark { display: block; color: var(--ink-2); font-weight: 700; }
         </div>
         <div class="detail">
           <h3>Two keys</h3>
-          <p><kbd>F5</kbd> or <kbd>⌥Space</kbd> starts and stops dictation. <span class="old-only">F5 needs Karabiner-Elements, because macOS sends the dictation key as a special event.</span><span class="app-only">In Hark.app, F5 needs nothing extra. The app maps the key itself.</span></p>
+          <p><kbd>F5</kbd> or <kbd>⌥Space</kbd> starts and stops dictation. F5 needs nothing extra. Hark maps the key itself.</p>
         </div>
         <div class="detail">
           <h3>Clipboard</h3>
@@ -724,17 +701,17 @@ h1 .mark { display: block; color: var(--ink-2); font-weight: 700; }
     <div class="sec-grid">
       <div class="sec-head">
         <h2 id="setup-h">Setup and permissions</h2>
-        <p>The installer does most of the work. macOS needs a few clicks that only you can make.</p>
+        <p>macOS needs two clicks that only you can make.</p>
       </div>
       <div>
         <h3 class="sr-only">Requirements</h3>
-        <ol class="perm app-only">
+        <ol class="perm">
           <li>
-            <h3>Hark.app: Microphone</h3>
+            <h3>Microphone</h3>
             <p>Click Allow when macOS asks. Hark listens only while you dictate.</p>
           </li>
           <li>
-            <h3>Hark.app: Accessibility</h3>
+            <h3>Accessibility</h3>
             <p>In System Settings → Privacy &amp; Security → Accessibility, turn on Hark, so it can paste. Hark continues by itself.</p>
           </li>
           <li>
@@ -742,47 +719,19 @@ h1 .mark { display: block; color: var(--ink-2); font-weight: 700; }
             <p>Hark maps the dictation key (F5) to itself with no driver and no password, and gives it back when it quits. Turn it off in the 🎙 menu; ⌥Space always works.</p>
           </li>
         </ol>
-        <p class="app-only">Check Hark.app with <code>/Applications/Hark.app/Contents/MacOS/Hark doctor</code>. The Hammerspoon version's steps are in the <a href="https://github.com/bath/hark-stt/blob/main/AGENTS.md#install-the-hammerspoon-version">AGENTS.md</a>.</p>
-        <div class="old-only">
-        <ul class="req">
-          <li>macOS on Apple silicon</li>
-          <li>Homebrew and Apple Command Line Tools</li>
-          <li>The installer uses Homebrew to install whisper.cpp, Hammerspoon and Karabiner-Elements.</li>
-        </ul>
-
-        <ol class="perm">
-          <li>
-            <h3>Hammerspoon: Microphone and Accessibility</h3>
-            <p>In System Settings → Privacy &amp; Security, turn on Hammerspoon under Microphone and under Accessibility.</p>
-          </li>
-          <li>
-            <h3>Karabiner-Elements: driver and Input Monitoring</h3>
-            <p>Allow the Karabiner driver, give it Input Monitoring, and turn on the rule "F5 / Dictation key → F18".</p>
-          </li>
-          <li>
-            <h3>Apple Dictation<span class="opt">Optional</span></h3>
-            <p>Turn off Apple Dictation.</p>
-          </li>
-        </ol>
-        </div>
-
-        <div class="tools old-only">
+        <div class="tools">
           <h3>Check the setup</h3>
-          <p>Run this any time. Every failed check includes the exact fix. Add <code>--json</code> for machine-readable output.</p>
+          <p>Every failed check includes the fix. Add <code>--json</code> for machine-readable output.</p>
           <div class="cmd">
             <div class="cmd-bar"><span>Terminal</span><button class="copy" type="button" data-copy="doctor-cmd" aria-label="Copy the doctor command">Copy</button></div>
-            <pre id="doctor-cmd">~/.hammerspoon/hark/bin/hark doctor</pre>
-          </div>
-          <p>To open the right System Settings pane, run <code>hark open-settings</code> with <code>accessibility</code>, <code>microphone</code> or <code>input-monitoring</code>.</p>
-          <div class="cmd">
-            <div class="cmd-bar"><span>Terminal</span><button class="copy" type="button" data-copy="settings-cmd" aria-label="Copy the open-settings command">Copy</button></div>
-            <pre id="settings-cmd">~/.hammerspoon/hark/bin/hark open-settings accessibility</pre>
+            <pre id="doctor-cmd">/Applications/Hark.app/Contents/MacOS/Hark doctor</pre>
           </div>
 
           <h3>Uninstall</h3>
+          <p>Quit Hark, then delete it from Applications. Or with Homebrew:</p>
           <div class="cmd">
             <div class="cmd-bar"><span>Terminal</span><button class="copy" type="button" data-copy="uninstall-cmd" aria-label="Copy the uninstall command">Copy</button></div>
-            <pre id="uninstall-cmd">~/.hammerspoon/hark/bin/hark uninstall</pre>
+            <pre id="uninstall-cmd">brew uninstall --zap --cask hark</pre>
           </div>
         </div>
       </div>
@@ -792,7 +741,7 @@ h1 .mark { display: block; color: var(--ink-2); font-weight: 700; }
 
 <footer class="foot">
   <div class="wrap">
-    <p style="margin:0"><strong>Hark</strong>Free, MIT license. Formerly <span style="white-space:nowrap">whisper-dictation</span>. This website uses PostHog analytics; the Hark app sends nothing.</p>
+    <p style="margin:0"><strong>Hark</strong>Free, MIT license. This website uses PostHog analytics; the Hark app sends nothing.</p>
     <nav aria-label="Project links">
       <a href="https://github.com/bath/hark-stt">GitHub</a>
       <a href="https://github.com/bath/hark-stt/blob/main/AGENTS.md">AGENTS.md</a>
@@ -856,8 +805,8 @@ h1 .mark { display: block; color: var(--ink-2); font-weight: 700; }
     });
   });
 
-  /* Header island: the app's Notch Island model from hark.lua (islandStep,
-     islandLevel, previewDictation), with the same springs, fades and level
+  /* Header island: the app's Notch Island model (NotchIsland.swift),
+     with the same springs, fades and level
      mapping. Click starts a dictation with simulated speech; click again, or
      wait, to stop. Transcribing lasts as long as Whisper takes for a few
      seconds of speech on a recent Mac. */
@@ -960,9 +909,7 @@ h1 .mark { display: block; color: var(--ink-2); font-weight: 700; }
     }, 1000 / 30);
     later(stop, AUTO_STOP);
   }
-  /* Hark.app: when the latest release has the disk image, put the download
-     first and show the app's two permissions. Until then the page shows the
-     Hammerspoon installer only. */
+  /* Point the download button straight at the latest disk image. */
   if (window.fetch) {
     fetch('https://api.github.com/repos/bath/hark-stt/releases/latest', { headers: { Accept: 'application/vnd.github+json' } })
       .then(function (r) { return r.ok ? r.json() : null; })
@@ -973,7 +920,6 @@ h1 .mark { display: block; color: var(--ink-2); font-weight: 700; }
           a.href = image.browser_download_url;
           a.textContent = 'Download Hark ' + release.tag_name.replace(/^v/, '');
         });
-        document.documentElement.classList.add('has-app');
       }, function () {});
   }
 

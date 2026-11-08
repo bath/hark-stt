@@ -4,8 +4,8 @@
     python3 sounds/generate.py <output-dir>
 
 Writes <output-dir>/<pack>/{start,stop,done,error}.wav plus packs.json, the
-index Hammerspoon reads to build the Sound menu. Standard library only, so the
-installer can run it with the python3 that ships with the Command Line Tools.
+index Hark.app reads to build the Sound menu. app/scripts/build-app.sh runs it
+at build time. Standard library only.
 
 Transitions:
   start  recording begins (keep it short: the mic is opening)

@@ -60,10 +60,8 @@
     /* Install funnel: a copy button, or a manual select-and-copy of the same block. */
     var COMMANDS = {
       'agent-prompt': 'agent_prompt',
-      'curl-cmd': 'curl_install',
       'cask-cmd': 'cask_install',
       'doctor-cmd': 'doctor',
-      'settings-cmd': 'open_settings',
       'uninstall-cmd': 'uninstall'
     };
     on('[data-copy]', 'click', function (btn) {
