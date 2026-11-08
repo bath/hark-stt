@@ -19,7 +19,7 @@ import Testing
 }
 
 /// Real whisper.cpp with the real model. Slow, so it runs only with
-/// HARK_SLOW_TESTS=1 and a model at ~/.cache/whisper.
+/// HARK_SLOW_TESTS=1 and the model in ~/Library/Application Support/Hark.
 @Suite(.enabled(if: ProcessInfo.processInfo.environment["HARK_SLOW_TESTS"] == "1"
                 && ModelLocation.existing() != nil))
 struct WhisperSlowTests {

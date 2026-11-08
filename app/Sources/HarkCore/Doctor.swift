@@ -1,7 +1,7 @@
 import Foundation
 
-/// `Hark doctor --json`: the same contract as the `hark` CLI of the
-/// Hammerspoon version. Every failed check has a `fix` an agent can act on and
+/// `Hark doctor --json`: a report an agent can follow to finish the setup.
+/// Every failed check has a `fix` an agent can act on and
 /// says if a person must act (`needs_human`); `next_step` is the first failed
 /// required check.
 public enum Doctor {

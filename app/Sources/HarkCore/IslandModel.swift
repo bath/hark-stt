@@ -1,7 +1,7 @@
 import Foundation
 
-/// The Notch Island's motion, as a pure value. The numbers are the ones in
-/// hark.lua and on the website (docs/index.html), so all three move alike.
+/// The Notch Island's motion, as a pure value. The numbers are the ones on
+/// the website (docs/index.html), so both move alike.
 /// The app steps it at 60 Hz and draws it.
 public struct IslandModel: Sendable {
     public enum Mode: Sendable, Equatable {
@@ -57,7 +57,7 @@ public struct IslandModel: Sendable {
 
         public init(x: Double) { self.x = x }
 
-        /// Semi-implicit Euler in steps of at most 8 ms, like hark.lua.
+        /// Semi-implicit Euler in steps of at most 8 ms.
         public mutating func step(toward target: Double, dt: Double, stiffness: Double, damping zeta: Double) {
             let damping = 2 * zeta * stiffness.squareRoot()
             let steps = max(1, Int((dt / 0.008).rounded(.up)))

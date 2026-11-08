@@ -51,7 +51,7 @@ public enum DictationError {
 /// transcribe, paste. Commands go in through `press()` and `cancel()`, and
 /// everything the user should see or hear comes out of `events`.
 ///
-/// The rules are the ones the Hammerspoon version uses: a press while
+/// The rules: a press while
 /// recording stops; a press while transcribing does nothing; a press before
 /// the model is loaded fails with a message.
 public final class DictationEngine: Sendable {
