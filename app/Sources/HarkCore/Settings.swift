@@ -1,7 +1,7 @@
 import Foundation
 
-/// The user's choices. The keys are the ones the Hammerspoon version kept
-/// under `hark.` in hs.settings, so the move to the app can copy them.
+/// The user's choices, in the app's UserDefaults. Do not rename a key: the
+/// user's choice stored under the old name would be lost.
 public struct HarkSettings: @unchecked Sendable {
     public enum Key: String, CaseIterable, Sendable {
         case soundPack, soundVolume, notchIsland, onboardingVersion, f5Key

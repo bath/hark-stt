@@ -10,7 +10,7 @@ func freshDefaults() -> UserDefaults {
 }
 
 @Suite struct SettingsTests {
-    @Test func defaultsMatchTheHammerspoonVersion() {
+    @Test func defaultsWhenNothingIsChosen() {
         let settings = HarkSettings(freshDefaults())
         #expect(settings.soundPack == nil)
         #expect(settings.soundVolume == 0.6)

@@ -1,6 +1,6 @@
 import Foundation
 
-/// F5 without Karabiner: a `hidutil` key mapping from the dictation key to
+/// F5 starts dictation through a `hidutil` key mapping from the dictation key to
 /// F18, which Hark listens for. It needs no driver, no permission and no
 /// password. macOS forgets the mapping at logout, so the app applies it at
 /// launch (Hark starts at login), when a keyboard is connected, and removes

@@ -29,7 +29,7 @@ public final class ModelDownloader: NSObject, URLSessionDataDelegate, @unchecked
         }
     }
 
-    /// The model the installer and the Hammerspoon version use.
+    /// The Whisper model Hark uses: large-v3-turbo, 5-bit quantized.
     public static let whisperModel = (
         url: URL(string: "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo-q5_0.bin")!,
         size: Int64(574_041_195),

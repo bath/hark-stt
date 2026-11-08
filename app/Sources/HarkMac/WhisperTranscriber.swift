@@ -97,8 +97,7 @@ public final class WhisperTranscriber: Transcriber, @unchecked Sendable {
         lock.withLock { context = loaded }
     }
 
-    /// The same settings as whisper-server's defaults, which the Hammerspoon
-    /// version used: greedy decoding, best of 2, temperature fallback.
+    /// Greedy decoding, best of 2, temperature fallback.
     private func run(_ context: OpaquePointer, _ samples: Samples) -> Int32 {
         var params = whisper_full_default_params(WHISPER_SAMPLING_GREEDY)
         params.n_threads = threads

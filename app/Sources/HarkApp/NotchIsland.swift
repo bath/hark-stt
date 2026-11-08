@@ -162,7 +162,7 @@ extension NotchIsland {
 }
 
 /// Draws one frame of the island. Coordinates are flipped, so y grows down
-/// from the top of the screen, as in hark.lua.
+/// from the top of the screen.
 private final class IslandView: NSView {
     private var model: IslandModel?
     private var now = 0.0
