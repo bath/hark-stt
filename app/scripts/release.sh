@@ -5,6 +5,7 @@
 #   app/scripts/release.sh --dry-run   the same with the local signing identity and no notarization
 #   app/scripts/release.sh --upload    also attach the DMG to the GitHub release v<version>,
 #                                      and set the cask's version and sha256 here and in bath/homebrew-tap
+#   --no-tap                           with --upload: leave bath/homebrew-tap alone (CI updates it over SSH)
 #
 # Needs, unless --dry-run:
 #   HARK_SIGN_IDENTITY   "Developer ID Application: Name (TEAMID)"
@@ -18,10 +19,12 @@ set -euo pipefail
 APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DRY_RUN=0
 UPLOAD=0
+TAP=1
 for arg in "$@"; do
   case "$arg" in
     --dry-run) DRY_RUN=1 ;;
     --upload) UPLOAD=1 ;;
+    --no-tap) TAP=0 ;;
     *) echo "Unknown option: $arg" >&2; exit 2 ;;
   esac
 done
@@ -106,9 +109,13 @@ if [ "$UPLOAD" = 1 ]; then
   echo "==> Upload to the GitHub release v$VERSION"
   gh release upload "v$VERSION" "$DMG" --clobber
 
-  echo "==> Cask: Casks/hark.rb here and in bath/homebrew-tap"
+  echo "==> Cask: Casks/hark.rb"
   CASK="$(dirname "$APP_DIR")/Casks/hark.rb"
   sed -i '' -e "s/^  version \".*\"/  version \"$VERSION\"/" -e "s/^  sha256 \".*\"/  sha256 \"$SHA\"/" "$CASK"
+fi
+
+if [ "$UPLOAD" = 1 ] && [ "$TAP" = 1 ]; then
+  echo "==> Cask: bath/homebrew-tap"
   TAP_SHA="$(gh api repos/bath/homebrew-tap/contents/Casks/hark.rb --jq .sha 2>/dev/null || true)"
   gh api -X PUT repos/bath/homebrew-tap/contents/Casks/hark.rb \
     -f message="hark $VERSION (cask)" -f content="$(base64 <"$CASK")" ${TAP_SHA:+-f sha="$TAP_SHA"} >/dev/null

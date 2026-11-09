@@ -119,11 +119,19 @@ Rules:
 
 ## Release
 
-1. Set `harkVersion` in `app/Sources/HarkCore/Version.swift` and merge to `main`.
-2. Tag `vX.Y.Z` on `main` with a message (`git tag -a vX.Y.Z -m "Hark X.Y.Z"`), push it, and make a **draft** GitHub release from it (`gh release create vX.Y.Z --verify-tag --draft`).
-3. Build, sign, notarize and attach the disk image: `HARK_SIGN_IDENTITY="Developer ID Application: …" HARK_NOTARY_PROFILE=hark app/scripts/release.sh --upload`. Or run the "Release Hark.app" workflow in GitHub Actions (its header lists the secrets). `--dry-run` does everything but notarization.
+A merge to `main` that changes what goes into Hark.app (`app/Sources`, `app/Resources`, `app/Package.swift`, `app/dmg`, `app/scripts/build-app.sh`, `sounds`) releases it. The "Release Hark.app" workflow takes the next patch version, commits it and tags it, builds, signs and notarizes the disk image, publishes the release, and commits the cask here and in bath/homebrew-tap. Its header lists the secrets.
+
+- For a minor or major version, set a higher `harkVersion` in `app/Sources/HarkCore/Version.swift` and merge it. The workflow uses that version as it is.
+- To release the next patch with no change, run the workflow by hand from the Actions tab.
+- A run that fails before it publishes deletes its draft release and its tag.
+
+By hand, from a Mac with the Developer ID certificate:
+
+1. Set `harkVersion` and merge to `main`.
+2. Tag `vX.Y.Z` on `main` (`git tag -a vX.Y.Z -m "Hark X.Y.Z"`), push it, and make a **draft** release (`gh release create vX.Y.Z --verify-tag --draft`).
+3. `HARK_SIGN_IDENTITY="Developer ID Application: …" HARK_NOTARY_PROFILE=hark app/scripts/release.sh --upload`. `--dry-run` does everything but notarization.
 4. Publish the release (`gh release edit vX.Y.Z --draft=false --latest`). The install script and 🎙 → Check for Updates find the release by its `Hark-X.Y.Z.dmg` asset, so publish only after the upload.
-5. `--upload` also sets the cask's `version` and `sha256` in `Casks/hark.rb` here and in bath/homebrew-tap. Commit the file here, then run `brew update && brew audit --strict --online --cask bath/tap/hark`.
+5. Commit `Casks/hark.rb`, which `--upload` changed here and in bath/homebrew-tap.
 
 ## Agent skills
 
