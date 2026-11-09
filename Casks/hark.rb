@@ -1,8 +1,8 @@
 # A copy of the cask in bath/homebrew-tap (Casks/hark.rb). The tap has the
 # live one. app/scripts/release.sh prints the sha256 for each release.
 cask "hark" do
-  version "2.0.2"
-  sha256 "5ee66ffb34b1468f5ce5ab6038447ffb8ecc6aa370a44507a62609ce9a57379d"
+  version "2.0.3"
+  sha256 "3b63f89b3ec995e29657772fb0526d747c538d8641ad424e8ca554db955f44ea"
 
   url "https://github.com/bath/hark-stt/releases/download/v#{version}/Hark-#{version}.dmg"
   name "Hark"
