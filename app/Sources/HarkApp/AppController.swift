@@ -53,6 +53,8 @@ final class AppController: NSObject, NSApplicationDelegate {
         registerHotkeys()
         listen()
         setup.onRetry = { [weak self] in self?.downloadModel() }
+        setup.onTick = { [weak self] in self?.setupTicked() }
+        setup.onFinish = { [weak self] in self?.setupFinished() }
         if let model = ModelLocation.existing() {
             loadModel(at: model)
         } else {
@@ -136,12 +138,15 @@ final class AppController: NSObject, NSApplicationDelegate {
 
     // MARK: - Dictation
 
-    /// The dictation key. The first press ever shows the welcome card instead.
+    /// The dictation key. The first press ever shows the welcome card instead,
+    /// or the setup window while the setup is not complete: the welcome card
+    /// follows the setup, so that "Start dictating" can paste.
     func press() {
         if welcome.isShown {
             welcome.close(startRecording: true)
         } else if phase != .recording && welcome.isPending {
-            welcome.show()
+            setupModel.refreshPermissions()
+            if setupModel.isComplete { welcome.show() } else { showSetup() }
         } else {
             engine.press()
         }
@@ -322,6 +327,20 @@ final class AppController: NSObject, NSApplicationDelegate {
     func showSetup() {
         setupModel.refreshPermissions()
         setup.show()
+    }
+
+    /// Each second while the setup window is open.
+    private func setupTicked() {
+        AccessibilityProbe.check(restart: AccessibilityProbe.restart)
+        if setupModel.isComplete && welcome.isPending { setup.finishSoon() }
+    }
+
+    /// The setup window closed on a complete setup. Give the focus back to the
+    /// app the user came from, so the welcome card's "Start dictating" pastes there.
+    private func setupFinished() {
+        guard welcome.isPending else { return }
+        NSApp.deactivate()
+        welcome.show()
     }
 
     var startsAtLogin: Bool { LoginItem.status == "enabled" }
