@@ -75,8 +75,17 @@ echo "==> Disk image"
 # so this also works on a CI runner.
 STAGE="$(mktemp -d)"
 trap 'rm -rf "$STAGE"' EXIT
-python3 -m venv "$STAGE/venv"
-"$STAGE/venv/bin/pip" install --quiet --disable-pip-version-check "dmgbuild==1.6.5"
+# dmgbuild 1.6.7 is the first version whose background shows on macOS 26.2 and
+# later (dmgbuild#273). It needs Python 3.10 or later; Xcode's python3 is 3.9.
+PY=""
+for c in python3.14 python3.13 python3.12 python3.11 python3.10 /opt/homebrew/bin/python3 python3; do
+  if command -v "$c" >/dev/null && "$c" -c 'import sys; sys.exit(sys.version_info < (3, 10))' 2>/dev/null; then
+    PY="$c"; break
+  fi
+done
+[[ -n "$PY" ]] || { echo "error: dmgbuild needs Python 3.10 or later (brew install python)" >&2; exit 1; }
+"$PY" -m venv "$STAGE/venv"
+"$STAGE/venv/bin/pip" install --quiet --disable-pip-version-check "dmgbuild==1.6.7"
 rm -f "$DMG"
 "$STAGE/venv/bin/dmgbuild" -s "$APP_DIR/dmg/settings.py" \
   -D app="$APP" -D background="$APP_DIR/dmg/background.tiff" \
