@@ -1,25 +1,91 @@
-# Builds, signs, notarizes and uploads the Hark.app disk image to the GitHub
-# release v<version> (make the release first). Run it by hand from the
-# Actions tab. It needs these repository secrets:
+# Releases Hark.app on every merge to main that changes what goes into it: the
+# paths under `on.push.paths`. The same list is in "Choose the version".
+#
+# The version is the next patch after the last v* tag. To release a minor or a
+# major version, set a higher harkVersion in app/Sources/HarkCore/Version.swift
+# and merge it: that version is used as it is. The run commits the version and
+# the cask to main, tags the version commit, builds, signs and notarizes the
+# disk image, publishes the release, and updates bath/homebrew-tap. A run that
+# fails before it publishes deletes its draft release and its tag.
+#
+# Run it by hand from the Actions tab to release the next patch with no change.
+#
+# Repository secrets:
 #   DEVELOPER_ID_P12           the "Developer ID Application" certificate and key, .p12, base64
 #   DEVELOPER_ID_P12_PASSWORD  its password
 #   DEVELOPER_ID_IDENTITY      "Developer ID Application: Name (TEAMID)"
 #   NOTARY_KEY_P8              an App Store Connect API key (.p8 contents)
 #   NOTARY_KEY_ID, NOTARY_ISSUER
+#   HOMEBREW_TAP_DEPLOY_KEY    the private half of a deploy key with write access to bath/homebrew-tap
 name: Release Hark.app
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - "app/Sources/**"
+      - "app/Resources/**"
+      - "app/Package.swift"
+      - "app/dmg/**"
+      - "app/scripts/build-app.sh"
+      - "sounds/**"
   workflow_dispatch:
+
+# One release at a time. A merge during a release waits, then releases main as it is then.
+concurrency:
+  group: release
+  cancel-in-progress: false
 
 jobs:
   release:
     runs-on: macos-latest
     permissions:
       contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Choose the version
+        id: version
+        run: |
+          file=app/Sources/HarkCore/Version.swift
+          set_version="$(sed -n 's/.*harkVersion = "\(.*\)".*/\1/p' "$file")"
+          last="$(git tag --list 'v*' --sort=-v:refname | head -1)"
+          last="${last#v}"
+          if [ -n "$last" ] && [ "$set_version" != "$last" ] \
+            && [ "$(printf '%s\n%s\n' "$set_version" "$last" | sort -V | tail -1)" = "$set_version" ]; then
+            version="$set_version"
+          elif [ "$GITHUB_EVENT_NAME" = push ] \
+            && git diff --quiet "v$last" HEAD -- app/Sources app/Resources app/Package.swift \
+              app/dmg app/scripts/build-app.sh sounds ":(exclude)$file"; then
+            echo "Nothing that goes into Hark.app changed since v$last."
+            exit 0
+          else
+            IFS=. read -r major minor patch <<<"$last"
+            version="$major.$minor.$((patch + 1))"
+          fi
+          echo "Releasing Hark $version (the last release is $last)."
+          echo "version=$version" >>"$GITHUB_OUTPUT"
+
+      - name: Commit and tag the version, and make a draft release
+        if: steps.version.outputs.version != ''
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          sed -i '' "s/harkVersion = \".*\"/harkVersion = \"$VERSION\"/" app/Sources/HarkCore/Version.swift
+          git commit -q -am "Hark $VERSION" --allow-empty
+          git tag -a "v$VERSION" -m "Hark $VERSION"
+          git push -q origin "v$VERSION"
+          gh release create "v$VERSION" --verify-tag --draft --title "Hark $VERSION" --generate-notes
 
       - name: Import the Developer ID certificate
+        if: steps.version.outputs.version != ''
         env:
           P12: ${{ secrets.DEVELOPER_ID_P12 }}
           P12_PASSWORD: ${{ secrets.DEVELOPER_ID_P12_PASSWORD }}
@@ -31,16 +97,59 @@ jobs:
           echo "$P12" | base64 --decode >"$RUNNER_TEMP/id.p12"
           security import "$RUNNER_TEMP/id.p12" -k "$keychain" -P "$P12_PASSWORD" -T /usr/bin/codesign
           security set-key-partition-list -S apple-tool:,apple: -s -k "" "$keychain"
+          # The search list is one word per keychain.
+          # shellcheck disable=SC2046
           security list-keychains -d user -s "$keychain" $(security list-keychains -d user | tr -d '"')
           rm "$RUNNER_TEMP/id.p12"
 
       - name: Build, sign, notarize and upload
+        if: steps.version.outputs.version != ''
         env:
           HARK_SIGN_IDENTITY: ${{ secrets.DEVELOPER_ID_IDENTITY }}
           NOTARY_KEY_P8: ${{ secrets.NOTARY_KEY_P8 }}
           HARK_NOTARY_KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
           HARK_NOTARY_ISSUER: ${{ secrets.NOTARY_ISSUER }}
-          GH_TOKEN: ${{ github.token }}
         run: |
           echo "$NOTARY_KEY_P8" >"$RUNNER_TEMP/notary.p8"
-          HARK_NOTARY_KEY="$RUNNER_TEMP/notary.p8" app/scripts/release.sh --upload
+          HARK_NOTARY_KEY="$RUNNER_TEMP/notary.p8" app/scripts/release.sh --upload --no-tap
+
+      # 🎙 → Check for Updates and the install script find a release by its DMG,
+      # so it is published only after the upload.
+      - name: Publish the release, and commit the cask to main
+        if: steps.version.outputs.version != ''
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          gh release edit "v$VERSION" --draft=false --latest
+          git commit -q -m "Cask for Hark.app $VERSION" -- Casks/hark.rb
+          git pull -q --rebase origin main
+          git push -q origin HEAD:main
+
+      - name: Update the cask in bath/homebrew-tap
+        if: steps.version.outputs.version != ''
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          DEPLOY_KEY: ${{ secrets.HOMEBREW_TAP_DEPLOY_KEY }}
+        run: |
+          key="$RUNNER_TEMP/tap_key"
+          install -m 600 /dev/null "$key"
+          printf '%s\n' "$DEPLOY_KEY" >"$key"
+          export GIT_SSH_COMMAND="ssh -i $key -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
+          git clone -q --depth 1 git@github.com:bath/homebrew-tap.git "$RUNNER_TEMP/tap"
+          cp Casks/hark.rb "$RUNNER_TEMP/tap/Casks/hark.rb"
+          cd "$RUNNER_TEMP/tap"
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -q -am "hark $VERSION (cask)"
+          git push -q origin HEAD
+          rm -f "$key"
+
+      - name: Delete the unpublished release
+        if: failure() && steps.version.outputs.version != ''
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          draft="$(gh release view "v$VERSION" --json isDraft --jq .isDraft 2>/dev/null || echo none)"
+          case "$draft" in
+            true) gh release delete "v$VERSION" --yes --cleanup-tag ;;
+            none) git push -q origin ":refs/tags/v$VERSION" 2>/dev/null || true ;;
+          esac
