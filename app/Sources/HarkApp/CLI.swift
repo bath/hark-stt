@@ -40,6 +40,10 @@ enum CLI {
         case "version":
             print(harkVersion)
             return 0
+        case AccessibilityProbe.command:
+            // Not in the usage: the app runs it as its own child, so that
+            // macOS judges the same app. From a terminal it judges the terminal.
+            return AXIsProcessTrusted() ? 0 : 1
         case "help", "-h", "--help":
             print(usage)
             return 0

@@ -70,11 +70,30 @@ final class SetupWindow {
     }
 
     var onRetry: (() -> Void)?
+    /// Each second while the window is open.
+    var onTick: (() -> Void)?
+    /// When the setup is complete and the window closes: the welcome card comes next.
+    var onFinish: (() -> Void)?
+    private var finishing = false
 
     func close() {
         poll?.invalidate()
         poll = nil
         window?.close()
+        if model.isComplete { onFinish?() }
+    }
+
+    /// Closes a complete setup after a moment to see the last check.
+    func finishSoon() {
+        guard model.isComplete, !finishing, window?.isVisible == true else { return }
+        finishing = true
+        Timer.scheduledTimer(withTimeInterval: 1.2, repeats: false) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                self.finishing = false
+                if self.model.isComplete && self.window?.isVisible == true { self.close() }
+            }
+        }
     }
 
     /// The standard system dialog: one click.
@@ -107,7 +126,10 @@ final class SetupWindow {
     private func startPolling() {
         guard poll == nil else { return }
         poll = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
-            MainActor.assumeIsolated { self?.model.refreshPermissions() }
+            MainActor.assumeIsolated {
+                self?.model.refreshPermissions()
+                self?.onTick?()
+            }
         }
     }
 }
