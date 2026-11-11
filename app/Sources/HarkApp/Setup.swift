@@ -11,10 +11,26 @@ import SwiftUI
 final class SetupModel {
     enum ModelStep: Equatable {
         case present
-        case downloading(ModelDownloader.Progress?)
+        case downloading(DownloadStep?)
         case failed(String)
     }
 
+    /// How far a download is. Only Whisper's download knows its bytes.
+    struct DownloadStep: Equatable {
+        var fraction: Double
+        var bytes: ModelDownloader.Progress?
+
+        init(fraction: Double) {
+            self.fraction = fraction
+        }
+
+        init(_ progress: ModelDownloader.Progress) {
+            fraction = progress.fraction
+            bytes = progress
+        }
+    }
+
+    var speechModel = SpeechModel.whisper
     var model = ModelStep.present
     var microphone = AVCaptureDevice.authorizationStatus(for: .audio)
     var accessibility = AXIsProcessTrusted()
@@ -146,7 +162,7 @@ struct SetupView: View {
             Text("Three steps. Hark continues by itself as each one is done.")
                 .foregroundStyle(.secondary)
 
-            step(done: model.model == .present, title: "Whisper model") {
+            step(done: model.model == .present, title: "\(model.speechModel.title) model") {
                 switch model.model {
                 case .present:
                     Text("On this Mac.")
@@ -209,8 +225,11 @@ struct SetupView: View {
         }
     }
 
-    private func downloadText(_ progress: ModelDownloader.Progress?) -> String {
-        guard let progress else { return "Starting the download…" }
+    private func downloadText(_ step: SetupModel.DownloadStep?) -> String {
+        guard let step else { return "Starting the download…" }
+        guard let progress = step.bytes else {
+            return "\(Int(step.fraction * 100)) % of \(model.speechModel.megabytes) MB"
+        }
         let mb = { (bytes: Int64) in bytes / 1_000_000 }
         var text = "\(mb(progress.received)) of \(mb(progress.total)) MB"
         if let left = progress.secondsLeft {

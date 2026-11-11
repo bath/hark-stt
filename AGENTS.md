@@ -59,6 +59,7 @@ When `ok` is `true`, tell the user:
 - Click into any text field, press F5 (or ⌥Space), talk, and press it again. The text is pasted where the cursor is.
 - The first press shows a short welcome card. Pressing F5 again closes it and starts recording.
 - The 🎙 icon in the menu bar has the sound packs, the Notch Island switch and Set Up Hark….
+- 🎙 → Speech Model changes from Whisper to Parakeet (NVIDIA Parakeet TDT 0.6B v2, English only, 464 MB, downloaded the first time). Parakeet is faster. The doctor checks the model the user chose.
 - The last transcript stays on the clipboard, so ⌘V pastes it again.
 
 ### Do not
@@ -89,7 +90,7 @@ With Homebrew, `brew uninstall --zap --cask hark` does the same.
 
 | Path | What it is |
 |---|---|
-| `app/` | Hark.app in Swift. A Swift package with no Xcode project. `HarkCore` has the `DictationEngine` and every rule that needs no macOS API; `HarkMac` has the Core Audio mic, whisper.cpp and paste; `HarkApp` is the menu bar app; `hark-dictate` dictates from the terminal. |
+| `app/` | Hark.app in Swift. A Swift package with no Xcode project. `HarkCore` has the `DictationEngine` and every rule that needs no macOS API; `HarkMac` has the Core Audio mic, whisper.cpp, Parakeet (Core ML, through FluidAudio) and paste; `HarkApp` is the menu bar app; `hark-dictate` dictates from the terminal. |
 | `sounds/generate.py` | Renders the sound packs. `app/scripts/build-app.sh` runs it. Python standard library only. |
 | `install.sh` | Installs Hark.app from the latest release. `docs/install.sh` is the same file, served at hark.works. Old 1.x installs run it for `hark update`, so it also removes the old Hammerspoon version. Keep the two copies the same. |
 | `Casks/hark.rb` | A copy of the cask in [bath/homebrew-tap](https://github.com/bath/homebrew-tap). The tap has the live one. |
@@ -101,8 +102,10 @@ From `app/` (the first build downloads whisper.cpp, about 66 MB):
 ```sh
 swift test                                          # engine and adapters, with fakes; never touches the mic
 HARK_SLOW_TESTS=1 swift test -c release --filter WhisperSlowTests   # real whisper.cpp and model
+HARK_SLOW_TESTS=1 swift test -c release --filter ParakeetSlowTests  # real Parakeet; skipped when its model is not on disk
 swift run -c release hark-dictate                   # Return to start and stop; prints text and timings
 swift run -c release hark-dictate --file clip.wav   # Whisper time for a 16 kHz mono WAV
+swift run -c release hark-dictate --parakeet        # Parakeet, not Whisper; downloads its model (464 MB) when missing
 scripts/build-app.sh                                # builds app/build/Hark.app
 open build/Hark.app --args --preview                # a fake dictation: island and sounds, no mic
 build/Hark.app/Contents/MacOS/Hark --render-island DIR   # each island state as a PNG

@@ -16,6 +16,7 @@ func freshDefaults() -> UserDefaults {
         #expect(settings.soundVolume == 0.6)
         #expect(settings.notchIsland == true)
         #expect(settings.onboardingVersion == 0)
+        #expect(settings.speechModel == .whisper)
     }
 
     @Test func choicesAreKept() {
@@ -30,6 +31,15 @@ func freshDefaults() -> UserDefaults {
         #expect(again.soundVolume == 0.8)
         #expect(again.notchIsland == false)
         #expect(again.onboardingVersion == 1)
+    }
+
+    @Test func theSpeechModelIsKept() {
+        let defaults = freshDefaults()
+        HarkSettings(defaults).speechModel = .parakeet
+        #expect(HarkSettings(defaults).speechModel == .parakeet)
+        // A name a later version stored, which this version does not know.
+        defaults.set("canary", forKey: HarkSettings.Key.speechModel.rawValue)
+        #expect(HarkSettings(defaults).speechModel == .whisper)
     }
 
     @Test func theKeyMappingEntriesHarkAddedAreKept() {

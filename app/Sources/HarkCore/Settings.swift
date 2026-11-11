@@ -11,6 +11,8 @@ public struct HarkSettings: @unchecked Sendable {
         case microphone
         /// The user (or the first run) has set Start at Login once; do not change it again.
         case loginItemChosen
+        /// A `SpeechModel` name.
+        case speechModel
     }
 
     public static let soundsOff = "off"
@@ -61,6 +63,12 @@ public struct HarkSettings: @unchecked Sendable {
     public var microphone: String? {
         get { defaults.string(forKey: Key.microphone.rawValue) }
         nonmutating set { defaults.set(newValue, forKey: Key.microphone.rawValue) }
+    }
+
+    /// Whisper until the user chooses another model.
+    public var speechModel: SpeechModel {
+        get { defaults.string(forKey: Key.speechModel.rawValue).flatMap(SpeechModel.init) ?? .whisper }
+        nonmutating set { defaults.set(newValue.rawValue, forKey: Key.speechModel.rawValue) }
     }
 
     /// The welcome card version the user has seen. 0 means none.

@@ -7,6 +7,8 @@ public struct AppStatus: Codable, Sendable, Equatable {
     public var version: String
     public var pid: Int32
     public var phase: String
+    /// The `SpeechModel` the user chose. Nil from an app older than the choice.
+    public var speechModel: String?
     /// missing, downloading, loading, loaded or failed.
     public var model: String
     /// 0…1 while the model downloads.
@@ -18,13 +20,14 @@ public struct AppStatus: Codable, Sendable, Equatable {
     public var loginItem: String?
     public var updated: Date
 
-    public init(version: String, pid: Int32, phase: String, model: String, modelProgress: Double? = nil,
+    public init(version: String, pid: Int32, phase: String, speechModel: String? = nil, model: String, modelProgress: Double? = nil,
                 accessibility: Bool, microphone: String, hotkeysTaken: [String], keyMapping: Bool? = nil,
                 loginItem: String? = nil, updated: Date) {
         self.modelProgress = modelProgress
         self.version = version
         self.pid = pid
         self.phase = phase
+        self.speechModel = speechModel
         self.model = model
         self.accessibility = accessibility
         self.microphone = microphone

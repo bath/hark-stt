@@ -19,6 +19,7 @@ Install Hark.app with `brew install --cask bath/tap/hark`, or `curl -fsSL https:
 - Network: audio and text never leave the Mac. The app downloads the model once from Hugging Face. 🎙 → Check for Updates asks the GitHub API for the latest release, only when the user clicks it.
 - The mic is off until the hotkey and is released when recording stops.
 - Text arrives after the user stops talking, in one paste. The last transcript stays on the clipboard.
+- Speech Model: Whisper large-v3-turbo is the default. The menu changes it to NVIDIA Parakeet TDT 0.6B v2 (English only, Core ML, 464 MB), which is faster. Both run on the Mac.
 - Notch Island: the MacBook notch shows recording, "Transcribing" and "Pasted". 26 sound packs mark each step.
 
 ## Optional

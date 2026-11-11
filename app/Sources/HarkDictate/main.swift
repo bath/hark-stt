@@ -1,11 +1,12 @@
 // hark-dictate: dictate from the terminal with the Swift engine.
 //
-//   swift run -c release hark-dictate [--model PATH] [--device NAME]
+//   swift run -c release hark-dictate [--model PATH] [--device NAME] [--parakeet]
 //   swift run -c release hark-dictate --file speech.wav    (16 kHz mono 16-bit)
 //
 // Press Return to start, talk, press Return to stop. The text and the timings
 // are printed instead of pasted. Ctrl-D quits. With --file, it transcribes the
-// file three times and prints the Whisper time of each run.
+// file three times and prints the Whisper time of each run. With --parakeet, it
+// uses Parakeet and not Whisper, and downloads that model when it is missing.
 
 import Foundation
 import HarkCore
@@ -30,13 +31,14 @@ func err(_ line: String) {
     FileHandle.standardError.write(Data((line + "\n").utf8))
 }
 
-let modelPath = option("--model") ?? ModelLocation.appSupport.path
-guard FileManager.default.fileExists(atPath: modelPath) else {
+let parakeet = CommandLine.arguments.contains("--parakeet")
+let modelPath = parakeet ? ParakeetTranscriber.directory.path : option("--model") ?? ModelLocation.appSupport.path
+guard parakeet || FileManager.default.fileExists(atPath: modelPath) else {
     err("No model at \(modelPath). Pass --model PATH.")
     exit(1)
 }
 
-let transcriber = WhisperTranscriber(modelPath: modelPath)
+let transcriber: any LocalTranscriber = parakeet ? ParakeetTranscriber() : WhisperTranscriber(modelPath: modelPath)
 let microphone = CoreAudioMicrophone(deviceName: option("--device"))
 let engine = DictationEngine(microphone: microphone, transcriber: transcriber, paster: PrintPaster())
 
@@ -55,7 +57,7 @@ if let file = option("--file") {
     for _ in 0..<3 {
         let started = ContinuousClock.now
         let text = try await transcriber.transcribe(samples)
-        err("whisper \(ms(ContinuousClock.now - started)) for \(Double(samples.count) / Double(whisperSampleRate)) s of audio")
+        err("\(parakeet ? "parakeet" : "whisper") \(ms(ContinuousClock.now - started)) for \(Double(samples.count) / Double(whisperSampleRate)) s of audio")
         print(text)
     }
     await transcriber.unload()

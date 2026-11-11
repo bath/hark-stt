@@ -49,11 +49,12 @@ final class StatusMenu: NSObject, NSMenuDelegate {
         case .transcribing: return "Transcribing"
         default: break
         }
+        let model = controller.settings.speechModel.title
         switch controller.modelState {
-        case .missing: return "No Whisper model"
-        case .downloading: return "Downloading the model"
-        case .loading: return "Loading the model"
-        case .failed: return "The model did not load"
+        case .missing: return "No \(model) model"
+        case .downloading: return "Downloading \(model) (\(Int((controller.downloadFraction ?? 0) * 100)) %)"
+        case .loading: return "Loading \(model)"
+        case .failed: return "\(model) did not load"
         case .loaded: return "Ready"
         }
     }
@@ -68,6 +69,9 @@ final class StatusMenu: NSObject, NSMenuDelegate {
         let mic = NSMenuItem(title: "Microphone", action: nil, keyEquivalent: "")
         mic.submenu = microphoneMenu()
         menu.addItem(mic)
+        let speech = NSMenuItem(title: "Speech Model", action: nil, keyEquivalent: "")
+        speech.submenu = speechModelMenu()
+        menu.addItem(speech)
         let sound = NSMenuItem(title: "Sound", action: nil, keyEquivalent: "")
         sound.submenu = soundMenu()
         menu.addItem(sound)
@@ -94,6 +98,21 @@ final class StatusMenu: NSObject, NSMenuDelegate {
         for name in CoreAudioMicrophone.choices() {
             let item = action(name, #selector(chooseMicrophone(_:)), checked: name == chosen)
             item.representedObject = name
+            menu.addItem(item)
+        }
+        return menu
+    }
+
+    private func speechModelMenu() -> NSMenu {
+        let menu = NSMenu()
+        menu.autoenablesItems = false
+        let chosen = controller.settings.speechModel
+        let busy = controller.phase == .recording || controller.phase == .transcribing
+        for model in SpeechModel.allCases {
+            let item = action(model.title, #selector(chooseSpeechModel(_:)), checked: model == chosen)
+            item.representedObject = model.rawValue
+            item.toolTip = "\(model.detail). \(model.megabytes) MB, downloaded the first time."
+            item.isEnabled = !busy
             menu.addItem(item)
         }
         return menu
@@ -144,6 +163,9 @@ final class StatusMenu: NSObject, NSMenuDelegate {
     @objc private func toggleIsland() { controller.setNotchIsland(!controller.settings.notchIsland) }
     @objc private func previewDictation() { controller.preview() }
     @objc private func chooseMicrophone(_ item: NSMenuItem) { controller.chooseMicrophone(item.representedObject as? String) }
+    @objc private func chooseSpeechModel(_ item: NSMenuItem) {
+        if let model = (item.representedObject as? String).flatMap(SpeechModel.init) { controller.chooseSpeechModel(model) }
+    }
     @objc private func toggleF5() { controller.setF5Key(!controller.settings.f5Key) }
     @objc private func showWelcome() { controller.showWelcome() }
     @objc private func showSetup() { controller.showSetup() }
