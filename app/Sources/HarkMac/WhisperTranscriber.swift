@@ -9,7 +9,7 @@ public enum TranscriberError: Error, CustomStringConvertible {
 
     public var description: String {
         switch self {
-        case .modelNotLoaded: "the Whisper model is not loaded"
+        case .modelNotLoaded: "the model is not loaded"
         case let .modelLoadFailed(path): "could not load the Whisper model at \(path)"
         case let .whisperFailed(code): "whisper_full failed with code \(code)"
         }

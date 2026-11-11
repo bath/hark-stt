@@ -24,6 +24,8 @@ final class AppController: NSObject, NSApplicationDelegate {
     private let setupModel = SetupModel()
     private lazy var setup = SetupWindow(model: setupModel)
     private var download: Task<Void, Never>?
+    /// Changes when the user chooses another model. Work for the old model stops.
+    private var modelRun = 0
     private var keyboards: KeyboardWatcher?
     private var keyMappingApplied = false
     private var engine: DictationEngine!
@@ -52,14 +54,10 @@ final class AppController: NSObject, NSApplicationDelegate {
         hotkeys = Hotkeys { [weak self] in self?.press() }
         registerHotkeys()
         listen()
-        setup.onRetry = { [weak self] in self?.downloadModel() }
+        setup.onRetry = { [weak self] in self?.startModel() }
         setup.onTick = { [weak self] in self?.setupTicked() }
         setup.onFinish = { [weak self] in self?.setupFinished() }
-        if let model = ModelLocation.existing() {
-            loadModel(at: model)
-        } else {
-            downloadModel()
-        }
+        startModel()
         firstRun()
         applyKeyMapping()
         keyboards = KeyboardWatcher { [weak self] in
@@ -89,14 +87,13 @@ final class AppController: NSObject, NSApplicationDelegate {
         case .notDetermined: "not_determined"
         @unknown default: "unknown"
         }
-        var progress: Double?
-        if case let .downloading(step) = setupModel.model { progress = step?.fraction ?? 0 }
         let status = AppStatus(
             version: harkVersion,
             pid: ProcessInfo.processInfo.processIdentifier,
             phase: phase.name,
+            speechModel: settings.speechModel.rawValue,
             model: "\(modelState)",
-            modelProgress: progress,
+            modelProgress: downloadFraction,
             accessibility: AXIsProcessTrusted(),
             microphone: microphone,
             hotkeysTaken: hotkeysTaken,
@@ -351,8 +348,87 @@ final class AppController: NSObject, NSApplicationDelegate {
         writeStatus()
     }
 
+    // MARK: - Model
+
+    /// 0…1 while the model downloads.
+    var downloadFraction: Double? {
+        if case let .downloading(progress) = setupModel.model { return progress?.fraction ?? 0 }
+        return nil
+    }
+
+    /// Changes the speech model now: frees the old one, then downloads (the
+    /// first time) and loads the new one.
+    func chooseSpeechModel(_ model: SpeechModel) {
+        guard model != settings.speechModel, phase != .recording, phase != .transcribing else { return }
+        settings.speechModel = model
+        modelRun += 1
+        let run = modelRun
+        download?.cancel()
+        download = nil
+        let old = slot.empty()
+        modelState = .missing
+        setupModel.speechModel = model
+        setupModel.model = .present
+        menu.update()
+        writeStatus()
+        Task {
+            await old?.unload()
+            if run == modelRun { startModel() }
+        }
+    }
+
+    /// Loads the chosen model, and downloads it first when it is not on disk.
+    private func startModel() {
+        setupModel.speechModel = settings.speechModel
+        switch settings.speechModel {
+        case .whisper:
+            if let model = ModelLocation.existing() { loadModel(at: model) } else { downloadModel() }
+        case .parakeet:
+            loadParakeet()
+        }
+    }
+
+    /// FluidAudio downloads Parakeet itself, so the download and the load are one step.
+    private func loadParakeet() {
+        guard download == nil else { return }
+        let run = modelRun
+        let transcriber = ParakeetTranscriber()
+        let setupModel = setupModel
+        let onDisk = ParakeetTranscriber.isDownloaded
+        modelState = onDisk ? .loading : .downloading
+        setupModel.model = onDisk ? .present : .downloading(nil)
+        menu.update()
+        download = Task {
+            do {
+                try await transcriber.load { fraction in
+                    Task { @MainActor in
+                        if case .downloading = setupModel.model { setupModel.model = .downloading(.init(fraction: fraction)) }
+                    }
+                }
+                guard run == modelRun else {
+                    await transcriber.unload()
+                    return
+                }
+                slot.fill(transcriber)
+                setupModel.model = .present
+                modelState = .loaded
+                setupProgressed()
+            } catch {
+                guard run == modelRun else { return }
+                log.error("parakeet: \(String(describing: error))")
+                modelState = .failed
+                setupModel.model = .failed(error.localizedDescription)
+                setup.show()
+            }
+            download = nil
+            menu.update()
+            writeStatus()
+        }
+    }
+
     private func downloadModel() {
         guard download == nil else { return }
+        let run = modelRun
         let destination = ModelLocation.appSupport
         let model = ModelDownloader.whisperModel
         let downloader = ModelDownloader(url: model.url, size: model.size, sha256: model.sha256, destination: destination)
@@ -364,12 +440,14 @@ final class AppController: NSObject, NSApplicationDelegate {
                 let setupModel = setupModel
                 try await downloader.download { progress in
                     Task { @MainActor in
-                        if case .downloading = setupModel.model { setupModel.model = .downloading(progress) }
+                        if case .downloading = setupModel.model { setupModel.model = .downloading(.init(progress)) }
                     }
                 }
+                guard run == modelRun else { return }
                 setupModel.model = .present
                 loadModel(at: destination)
             } catch {
+                guard run == modelRun else { return }
                 log.error("download: \(String(describing: error))")
                 modelState = .failed
                 setupModel.model = .failed((error as? DownloadError)?.description ?? error.localizedDescription)
@@ -382,6 +460,7 @@ final class AppController: NSObject, NSApplicationDelegate {
     }
 
     private func loadModel(at url: URL) {
+        let run = modelRun
         let transcriber = WhisperTranscriber(modelPath: url.path)
         slot.fill(transcriber)
         modelState = .loading
@@ -389,9 +468,12 @@ final class AppController: NSObject, NSApplicationDelegate {
         Task {
             do {
                 try await transcriber.load()
+                // The user chose another model meanwhile, and that choice freed this one.
+                guard run == modelRun else { return }
                 modelState = .loaded
                 setupProgressed()
             } catch {
+                guard run == modelRun else { return }
                 log.error("\(String(describing: error))")
                 modelState = .failed
             }

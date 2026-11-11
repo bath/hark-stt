@@ -53,11 +53,19 @@ enum CLI {
     }
 
     static func facts() -> Doctor.Facts {
-        let model = ModelLocation.existing().flatMap { url in
-            (try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? Int64) == ModelDownloader.whisperModel.size
-                ? url : nil
+        let status = AppStatus.live()
+        // The running app knows best; the setting is the same one when it does not run.
+        let speechModel = status?.speechModel.flatMap(SpeechModel.init) ?? HarkSettings().speechModel
+        let present: Bool
+        switch speechModel {
+        case .whisper:
+            present = ModelLocation.existing().map { url in
+                (try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? Int64) == ModelDownloader.whisperModel.size
+            } ?? false
+        case .parakeet:
+            present = ParakeetTranscriber.isDownloaded
         }
-        return Doctor.Facts(appPath: Bundle.main.bundlePath, status: AppStatus.live(), modelPresent: model != nil)
+        return Doctor.Facts(appPath: Bundle.main.bundlePath, status: status, speechModel: speechModel, modelPresent: present)
     }
 
     static func doctor(_ arguments: [String]) -> Int32 {

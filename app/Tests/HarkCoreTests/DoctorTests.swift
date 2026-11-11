@@ -65,6 +65,26 @@ import Testing
         #expect(report.nextStep?.needsHuman == false)
     }
 
+    @Test func theModelCheckNamesTheChosenModel() throws {
+        var report = report(nil, model: false)
+        #expect(report.checks.first { $0.id == "model" }?.title == "Whisper model (574 MB)")
+
+        report = Doctor.report(.init(appPath: app, status: nil, speechModel: .parakeet, modelPresent: false))
+        try checkContract(report)
+        let model = report.checks.first { $0.id == "model" }!
+        #expect(model.title == "Parakeet model (464 MB)")
+        #expect(model.fix?.contains("Parakeet model (464 MB)") == true)
+    }
+
+    @Test func aStatusFromAnOlderAppStillReads() throws {
+        let old = #"{"version":"2.0.4","pid":1,"phase":"idle","model":"loaded","accessibility":true,"#
+            + #""microphone":"authorized","hotkeysTaken":[],"updated":"2026-11-11T10:00:00Z"}"#
+        let url = FileManager.default.temporaryDirectory.appending(path: "hark-status-\(UUID().uuidString).json")
+        try Data(old.utf8).write(to: url)
+        defer { try? FileManager.default.removeItem(at: url) }
+        #expect(AppStatus.read(from: url)?.speechModel == nil)
+    }
+
     @Test func permissionsNeedAPerson() throws {
         var report = report(status(microphone: "not_determined", accessibility: false))
         try checkContract(report)

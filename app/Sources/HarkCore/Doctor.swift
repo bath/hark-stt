@@ -11,12 +11,15 @@ public enum Doctor {
         public var appPath: String
         /// The running app's own report, when it is running.
         public var status: AppStatus?
-        /// A model of the right size is on disk.
+        /// The model the user chose.
+        public var speechModel: SpeechModel
+        /// That model is complete on disk.
         public var modelPresent: Bool
 
-        public init(appPath: String, status: AppStatus?, modelPresent: Bool) {
+        public init(appPath: String, status: AppStatus?, speechModel: SpeechModel = .whisper, modelPresent: Bool) {
             self.appPath = appPath
             self.status = status
+            self.speechModel = speechModel
             self.modelPresent = modelPresent
         }
     }
@@ -101,7 +104,9 @@ public enum Doctor {
 
         // Restarting Hark retries a failed download (it resumes) or load.
         let restart = "osascript -e 'quit app id \"works.hark.Hark\"'; sleep 2; open \(app)"
-        var model = (fix: "Open Hark. It downloads the model (574 MB) by itself.", command: "open \(app)")
+        let size = "\(facts.speechModel.megabytes) MB"
+        var model = (fix: "Open Hark. It downloads the \(facts.speechModel.title) model (\(size)) by itself.",
+                     command: "open \(app)")
         if status?.model == "failed" {
             model = ("The model download or load failed. Restart Hark to try again; a download goes on from where it stopped.",
                      restart)
@@ -133,7 +138,7 @@ public enum Doctor {
                   fix: "Optional. Move Hark.app to /Applications, so it starts at login and updates from there.",
                   command: "mv \(app) /Applications/ && open /Applications/Hark.app", required: false),
             check("app_running", "Hark is running", running, fix: "Open Hark.", command: "open \(app)"),
-            check("model", "Whisper model (574 MB)", facts.modelPresent, fix: model.fix, command: model.command),
+            check("model", "\(facts.speechModel.title) model (\(size))", facts.modelPresent, fix: model.fix, command: model.command),
             check("microphone", "Hark has Microphone permission", status?.microphone == "authorized",
                   fix: microphone.fix, human: microphone.human, command: microphone.command),
             check("accessibility", "Hark has Accessibility permission (to paste)", status?.accessibility == true,
