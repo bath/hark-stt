@@ -26,12 +26,12 @@ final class NotchIsland {
         }
     }
 
-    func show(_ phase: DictationPhase) {
+    func show(_ phase: DictationPhase, notice: String? = nil) {
         let mode = IslandModel.Mode(phase)
         let message: String? = if case let .error(text) = phase { text } else { nil }
         // Every dictation opens on the pointer's screen; later states stay there.
         if mode == .recording || panel == nil || !isOpen { open() }
-        model.set(mode, message: message, now: CACurrentMediaTime())
+        model.set(mode, message: message, notice: notice, now: CACurrentMediaTime())
     }
 
     func level(_ rms: Float) {
@@ -80,7 +80,7 @@ final class NotchIsland {
     }
 
     private func place(on screen: NSScreen, geometry: IslandModel.Geometry, centerX: Double) {
-        let size = NSSize(width: geometry.canvasWidth, height: geometry.height + 20)
+        let size = NSSize(width: geometry.canvasWidth, height: geometry.canvasHeight)
         let origin = NSPoint(x: screen.frame.minX + centerX - size.width / 2, y: screen.frame.maxY - size.height)
         let frame = NSRect(origin: origin, size: size)
         if let panel {
@@ -133,20 +133,21 @@ extension NotchIsland {
     static func render(to directory: URL) throws {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let geometry = IslandModel.Geometry.notch(width: 185, height: 32)
-        let states: [(String, IslandModel.Mode, String?)] = [
-            ("recording", .recording, nil), ("transcribing", .transcribing, nil),
-            ("done", .done, nil), ("error", .error, "No speech"),
+        let states: [(String, IslandModel.Mode, String?, String?)] = [
+            ("recording", .recording, nil, nil), ("transcribing", .transcribing, nil, nil),
+            ("done", .done, nil, nil), ("error", .error, "No speech", nil),
+            ("update", .done, nil, Updates.notice),
         ]
-        for (name, mode, message) in states {
+        for (name, mode, message, notice) in states {
             var model = IslandModel(geometry: geometry)
-            model.set(mode, message: message, now: 0)
+            model.set(mode, message: message, notice: notice, now: 0)
             var t = 0.0
             for _ in 0..<60 {
                 t += 1.0 / 60
                 if mode == .recording { model.setLevel(rms: 0.08, now: t) }
                 model.step(now: t, dt: 1.0 / 60)
             }
-            let view = IslandView(frame: NSRect(x: 0, y: 0, width: geometry.canvasWidth, height: geometry.height + 20))
+            let view = IslandView(frame: NSRect(x: 0, y: 0, width: geometry.canvasWidth, height: geometry.canvasHeight))
             view.appearance = NSAppearance(named: .darkAqua)
             view.draw(model, now: t)
             guard let bitmap = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { continue }
@@ -171,7 +172,9 @@ private final class IslandView: NSView {
 
     static let red = NSColor(srgbRed: 1, green: 0.27, blue: 0.23, alpha: 1)
     static let green = NSColor(srgbRed: 0.19, green: 0.82, blue: 0.35, alpha: 1)
+    static let blue = NSColor(srgbRed: 0.30, green: 0.64, blue: 1, alpha: 1)
     static let font = NSFont.systemFont(ofSize: 12, weight: .semibold)
+    static let noticeFont = NSFont.systemFont(ofSize: 11, weight: .medium)
 
     func draw(_ model: IslandModel, now: Double) {
         self.model = model
@@ -185,7 +188,9 @@ private final class IslandView: NSView {
         guard let model else { return }
         let w = max(0, model.width.x), h = max(0, model.height.x)
         guard w > 1 && h > 1 else { return }
-        let x0 = bounds.width / 2 - w / 2, x1 = bounds.width / 2 + w / 2, cy = h / 2
+        // The row with the state keeps the notch height; a notice is below it.
+        let row = min(h, model.geometry.height)
+        let x0 = bounds.width / 2 - w / 2, x1 = bounds.width / 2 + w / 2, cy = row / 2
         let left = x0 + 20, right = x1 - 14
 
         // The shape starts above the screen edge, so only its bottom corners show.
@@ -201,7 +206,7 @@ private final class IslandView: NSView {
             text(String(format: "%d:%02d", seconds / 60, seconds % 60), at: left + 8, cy: cy, alpha: rec, alignRight: false)
             Self.red.withAlphaComponent(rec).setFill()
             for (i, band) in model.bands.enumerated() {
-                let bh = 3 + band * (h - 16)
+                let bh = 3 + band * (row - 16)
                 let bar = NSRect(x: right - 6 - Double(i) * 5, y: cy - bh / 2, width: 2.6, height: bh)
                 NSBezierPath(roundedRect: bar, xRadius: 1.3, yRadius: 1.3).fill()
             }
@@ -233,6 +238,10 @@ private final class IslandView: NSView {
             text("Pasted", at: right, cy: cy, alpha: done * 0.92)
         }
 
+        if let notice = model.notice, model.noticeAlpha > 0.01 {
+            drawNotice(notice, cy: row + IslandModel.noticeHeight / 2 - 3, alpha: model.noticeAlpha)
+        }
+
         let failed = model.alpha(.error)
         if failed > 0.01 {
             let cross = NSBezierPath()
@@ -246,6 +255,21 @@ private final class IslandView: NSView {
             cross.stroke()
             text(model.message, at: right, cy: cy, alpha: failed * 0.92)
         }
+    }
+
+    /// The small line below the state: its first sentence in blue, the rest gray.
+    private func drawNotice(_ notice: String, cy: Double, alpha: Double) {
+        let end = notice.firstIndex(of: ".").map { notice.index(after: $0) } ?? notice.endIndex
+        let line = NSMutableAttributedString(string: String(notice[..<end]), attributes: [
+            .font: NSFont.systemFont(ofSize: 11, weight: .semibold),
+            .foregroundColor: Self.blue.withAlphaComponent(alpha),
+        ])
+        line.append(NSAttributedString(string: String(notice[end...]), attributes: [
+            .font: Self.noticeFont,
+            .foregroundColor: NSColor(white: 0.7, alpha: alpha),
+        ]))
+        let size = line.size()
+        line.draw(at: NSPoint(x: bounds.width / 2 - size.width / 2, y: cy - size.height / 2))
     }
 
     /// Text centered on `cy`, starting at `x`, or ending at `x` when right-aligned.

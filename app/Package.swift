@@ -11,6 +11,8 @@ let package = Package(
     dependencies: [
         // Parakeet on Core ML.
         .package(url: "https://github.com/FluidInference/FluidAudio.git", exact: "0.18.3"),
+        // Installs an update in place.
+        .package(url: "https://github.com/sparkle-project/Sparkle", exact: "2.10.1"),
     ],
     targets: [
         // whisper.cpp with Metal, from the official release. b5454 is the build of v1.9.5.
@@ -25,7 +27,7 @@ let package = Package(
         .target(name: "HarkMac", dependencies: ["HarkCore", "whisper", .product(name: "FluidAudio", package: "FluidAudio")]),
         .executableTarget(name: "HarkDictate", dependencies: ["HarkCore", "HarkMac"]),
         // The menu bar app. scripts/build-app.sh wraps it in Hark.app.
-        .executableTarget(name: "HarkApp", dependencies: ["HarkCore", "HarkMac"]),
+        .executableTarget(name: "HarkApp", dependencies: ["HarkCore", "HarkMac", .product(name: "Sparkle", package: "Sparkle")]),
         .testTarget(name: "HarkCoreTests", dependencies: ["HarkCore"]),
         .testTarget(
             name: "HarkMacTests",

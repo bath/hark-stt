@@ -12,6 +12,11 @@ public struct IslandModel: Sendable {
     public static let wings: [Mode: Double] = [.recording: 64, .transcribing: 96, .done: 72, .error: 84]
     /// Seconds a result stays before the island closes.
     public static let holds: [Mode: Double] = [.done: 1.2, .error: 1.6]
+    /// A notice is a small line below the result. The island grows down by
+    /// this much, is at least this wide, and stays this long, so it can be read.
+    public static let noticeHeight = 22.0
+    public static let noticeWidth = 290.0
+    public static let noticeHold = 3.0
     public static let widthSpring = (stiffness: 260.0, damping: 0.62)
     public static let heightSpring = (stiffness: 260.0, damping: 0.72)
     public static let fadeInRate = 12.0
@@ -48,7 +53,9 @@ public struct IslandModel: Sendable {
         }
 
         /// The widest the island gets, plus room for the overshoot.
-        public var canvasWidth: Double { core + 2 * IslandModel.wings[.transcribing]! + 40 }
+        public var canvasWidth: Double { max(core + 2 * IslandModel.wings[.transcribing]!, IslandModel.noticeWidth) + 40 }
+        /// The tallest the island gets, plus room for the overshoot.
+        public var canvasHeight: Double { height + IslandModel.noticeHeight + 20 }
     }
 
     public struct Spring: Sendable, Equatable {
@@ -72,6 +79,8 @@ public struct IslandModel: Sendable {
     public private(set) var geometry: Geometry
     public private(set) var mode = Mode.idle
     public private(set) var message = ""
+    /// The small line below the result, or nil.
+    public private(set) var notice: String?
     public private(set) var width: Spring
     public private(set) var height: Spring
     /// How visible each state's content is, 0…1.
@@ -93,11 +102,19 @@ public struct IslandModel: Sendable {
     /// The width the spring is heading to now.
     public var targetWidth: Double {
         guard let wing = Self.wings[mode] else { return geometry.restWidth }
-        return geometry.core + 2 * wing
+        let width = geometry.core + 2 * wing
+        return notice == nil ? width : max(width, Self.noticeWidth)
     }
 
     public var targetHeight: Double {
-        Self.wings[mode] == nil ? geometry.restHeight : geometry.height
+        guard Self.wings[mode] != nil else { return geometry.restHeight }
+        return geometry.height + (notice == nil ? 0 : Self.noticeHeight)
+    }
+
+    /// How visible the notice is, 0…1: it shows only when the island has grown down for it.
+    public var noticeAlpha: Double {
+        guard notice != nil else { return 0 }
+        return alpha(.done) * clamp((height.x - geometry.height) / Self.noticeHeight)
     }
 
     /// Closed and still: the window can hide.
@@ -123,7 +140,7 @@ public struct IslandModel: Sendable {
         height = Spring(x: geometry.restHeight)
     }
 
-    public mutating func set(_ mode: Mode, message: String? = nil, now: Double) {
+    public mutating func set(_ mode: Mode, message: String? = nil, notice: String? = nil, now: Double) {
         if mode == .recording {
             recordingStart = now
             elapsed = 0
@@ -131,7 +148,9 @@ public struct IslandModel: Sendable {
         }
         self.mode = mode
         if let message { self.message = message }
-        holdUntil = Self.holds[mode].map { now + $0 }
+        // The text stays while the island closes, so it fades with it.
+        if mode != .idle { self.notice = notice }
+        holdUntil = Self.holds[mode].map { now + (notice == nil ? $0 : max($0, Self.noticeHold)) }
     }
 
     /// A mic RMS level. Room noise is near −50 dB and close speech near −15 dB,

@@ -84,6 +84,37 @@ import Testing
         #expect(model.mode == .idle)
     }
 
+    @Test func aNoticeGrowsTheIslandDownAndStaysLonger() {
+        var model = IslandModel(geometry: notch)
+        model.set(.done, notice: "Update available.", now: 0)
+        #expect(model.targetHeight == 32 + IslandModel.noticeHeight)
+        #expect(model.targetWidth == 200 + 144)
+        run(&model, for: 2.9)
+        #expect(model.mode == .done)
+        #expect(model.noticeAlpha > 0.9)
+        run(&model, from: 2.9, for: 0.2)
+        #expect(model.mode == .idle)
+        #expect(model.targetHeight == 32)
+        run(&model, from: 3.1, for: 2)
+        #expect(model.isClosed)
+
+        // The next dictation has no notice.
+        model.set(.recording, now: 10)
+        #expect(model.notice == nil)
+        #expect(model.targetHeight == 32)
+        model.set(.done, now: 11)
+        #expect(model.noticeAlpha == 0)
+    }
+
+    @Test func aNoticeHasRoomOnAScreenWithNoNotch() {
+        let pill = IslandModel.Geometry.noNotch(menuBarHeight: 24)
+        var model = IslandModel(geometry: pill)
+        model.set(.done, notice: "Update available.", now: 0)
+        #expect(model.targetWidth == IslandModel.noticeWidth)
+        #expect(pill.canvasWidth >= IslandModel.noticeWidth + 40)
+        #expect(pill.canvasHeight >= model.targetHeight + 20)
+    }
+
     @Test func levelsMapFromMinusFiftyToMinusFifteenDecibels() {
         #expect(IslandModel.level(rms: 0.003) == 0) // −50 dB
         #expect(abs(IslandModel.level(rms: 0.1778) - 1) < 0.001) // −15 dB
