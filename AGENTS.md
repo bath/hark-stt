@@ -70,7 +70,8 @@ When `ok` is `true`, tell the user:
 
 - With Homebrew: `brew upgrade --cask hark`.
 - Without Homebrew: run the install script again. It quits Hark and replaces it.
-- The user can also do it in the app: 🎙 → Check for Updates….
+- The user can also do it in the app: 🎙 → Check for Updates…. Hark downloads the new version, replaces itself and starts again.
+- Hark asks hark.works for a new version once a day, after a dictation. When there is one, the Notch Island shows "Update available. Open the menu bar icon." below "Pasted", and the 🎙 menu has Update to Hark X.Y.Z… as its first item. 🎙 → Check for Updates Automatically turns this off.
 
 Settings, permissions and the model stay. Run the doctor afterwards.
 
@@ -94,7 +95,7 @@ With Homebrew, `brew uninstall --zap --cask hark` does the same.
 | `sounds/generate.py` | Renders the sound packs. `app/scripts/build-app.sh` runs it. Python standard library only. |
 | `install.sh` | Installs Hark.app from the latest release. `docs/install.sh` is the same file, served at hark.works. Old 1.x installs run it for `hark update`, so it also removes the old Hammerspoon version. Keep the two copies the same. |
 | `Casks/hark.rb` | A copy of the cask in [bath/homebrew-tap](https://github.com/bath/homebrew-tap). The tap has the live one. |
-| `docs/` | The website (GitHub Pages from `main` `/docs`). `docs/AGENTS.md` and `docs/llms.txt` are copies of the files at the root. |
+| `docs/` | The website (GitHub Pages from `main` `/docs`). `docs/appcast.xml` is the update feed the app reads; the release writes it. `docs/AGENTS.md` and `docs/llms.txt` are copies of the files at the root. |
 | `demo-api/`, `proxy/` | Vercel projects for the website's live demo and analytics proxy. |
 
 From `app/` (the first build downloads whisper.cpp, about 66 MB):
@@ -133,8 +134,10 @@ By hand, from a Mac with the Developer ID certificate:
 1. Set `harkVersion` and merge to `main`.
 2. Tag `vX.Y.Z` on `main` (`git tag -a vX.Y.Z -m "Hark X.Y.Z"`), push it, and make a **draft** release (`gh release create vX.Y.Z --verify-tag --draft`).
 3. `HARK_SIGN_IDENTITY="Developer ID Application: …" HARK_NOTARY_PROFILE=hark app/scripts/release.sh --upload`. `--dry-run` does everything but notarization.
-4. Publish the release (`gh release edit vX.Y.Z --draft=false --latest`). The install script and 🎙 → Check for Updates find the release by its `Hark-X.Y.Z.dmg` asset, so publish only after the upload.
-5. Commit `Casks/hark.rb`, which `--upload` changed here and in bath/homebrew-tap.
+4. Publish the release (`gh release edit vX.Y.Z --draft=false --latest`). The install script finds the release by its `Hark-X.Y.Z.dmg` asset, and `docs/appcast.xml` links to it, so publish only after the upload.
+5. Commit `Casks/hark.rb` and `docs/appcast.xml`, which `--upload` changed. It also changed the cask in bath/homebrew-tap.
+
+The app updates itself with [Sparkle](https://sparkle-project.org). `docs/appcast.xml` (served at hark.works) names the latest disk image and has its EdDSA signature. `SUPublicEDKey` in `app/Resources/Info.plist` is the public half of the key; the private half is the `SPARKLE_PRIVATE_KEY` secret, or the login keychain for a release by hand. To make the key once: `app/.build/artifacts/sparkle/Sparkle/bin/generate_keys` prints the public key, and `generate_keys -x FILE` exports the private key. Do not change the key: installed apps accept only updates signed with it.
 
 ## Agent skills
 

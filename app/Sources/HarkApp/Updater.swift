@@ -17,8 +17,10 @@ final class Updater: NSObject, SPUUpdaterDelegate {
     init(settings: HarkSettings) {
         self.settings = settings
         super.init()
-        // Only Hark.app has a feed. `swift run Hark` has none, and Sparkle shows an alert about that.
-        guard Bundle.main.object(forInfoDictionaryKey: "SUFeedURL") != nil else { return }
+        // Sparkle shows an alert when it has no feed or no key. `swift run Hark` has
+        // no feed, and a build from before the key was set has a placeholder key.
+        let info = { Bundle.main.object(forInfoDictionaryKey: $0) as? String }
+        guard info("SUFeedURL") != nil, let key = info("SUPublicEDKey"), !key.hasPrefix("__") else { return }
         controller = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: self, userDriverDelegate: nil)
     }
 

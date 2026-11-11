@@ -13,6 +13,11 @@
 #   HARK_NOTARY_PROFILE  a notarytool keychain profile (xcrun notarytool store-credentials)
 #   HARK_NOTARY_KEY, HARK_NOTARY_KEY_ID, HARK_NOTARY_ISSUER   an App Store Connect API key (.p8 path), for CI
 #
+# --upload also signs the DMG for Sparkle and writes docs/appcast.xml, which
+# hark.works serves and the app reads to update itself. The Sparkle key is
+# SPARKLE_PRIVATE_KEY (the text that `generate_keys -x FILE` exports), or the
+# key in the login keychain when that is not set.
+#
 # Prints the DMG path and its sha256.
 set -euo pipefail
 
@@ -33,6 +38,12 @@ VERSION="$(sed -n 's/.*harkVersion = "\(.*\)".*/\1/p' "$APP_DIR/Sources/HarkCore
 APP="$APP_DIR/build/Hark.app"
 DMG="$APP_DIR/build/Hark-$VERSION.dmg"
 ENTITLEMENTS="$APP_DIR/Resources/Hark.entitlements"
+
+# An app with no Sparkle key can never update itself, so do not release one.
+if grep -q "__SPARKLE_PUBLIC_KEY__" "$APP_DIR/Resources/Info.plist" && [ "$DRY_RUN" = 0 ]; then
+  echo "Set SUPublicEDKey in app/Resources/Info.plist to the Sparkle public key (see AGENTS.md, Release)." >&2
+  exit 1
+fi
 
 if [ "$DRY_RUN" = 0 ]; then
   case "${HARK_SIGN_IDENTITY:-}" in
@@ -60,7 +71,7 @@ IDENTITY="${HARK_SIGN_IDENTITY:-$(codesign -dvv "$APP" 2>&1 | sed -n 's/^Authori
 IDENTITY="${IDENTITY:--}"
 
 echo "==> Sign with the hardened runtime ($IDENTITY)"
-codesign --force --timestamp --options runtime --sign "$IDENTITY" "$APP/Contents/Frameworks/whisper.framework"
+"$APP_DIR/scripts/sign-nested.sh" "$APP" "$IDENTITY" --timestamp --options runtime
 codesign --force --timestamp --options runtime --entitlements "$ENTITLEMENTS" --sign "$IDENTITY" "$APP"
 codesign --verify --strict --deep "$APP"
 
@@ -108,6 +119,37 @@ SHA="$(shasum -a 256 "$DMG" | cut -d' ' -f1)"
 if [ "$UPLOAD" = 1 ]; then
   echo "==> Upload to the GitHub release v$VERSION"
   gh release upload "v$VERSION" "$DMG" --clobber
+
+  echo "==> Appcast: docs/appcast.xml"
+  SIGN_UPDATE="$APP_DIR/.build/artifacts/sparkle/Sparkle/bin/sign_update"
+  if [ -n "${SPARKLE_PRIVATE_KEY:-}" ]; then
+    KEY_FILE="$STAGE/sparkle.key"
+    install -m 600 /dev/null "$KEY_FILE"
+    printf '%s' "$SPARKLE_PRIVATE_KEY" >"$KEY_FILE"
+    ED_SIGNATURE="$("$SIGN_UPDATE" --ed-key-file "$KEY_FILE" -p "$DMG")"
+    rm -f "$KEY_FILE"
+  else
+    ED_SIGNATURE="$("$SIGN_UPDATE" -p "$DMG")"
+  fi
+  [ -n "$ED_SIGNATURE" ] || { echo "error: sign_update gave no signature" >&2; exit 1; }
+  # One item: the latest release. Sparkle needs no older ones.
+  cat >"$(dirname "$APP_DIR")/docs/appcast.xml" <<XML
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+  <channel>
+    <title>Hark</title>
+    <link>https://hark.works/appcast.xml</link>
+    <item>
+      <title>Hark $VERSION</title>
+      <link>https://github.com/bath/hark-stt/releases/tag/v$VERSION</link>
+      <sparkle:version>$VERSION</sparkle:version>
+      <sparkle:shortVersionString>$VERSION</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <enclosure url="https://github.com/bath/hark-stt/releases/download/v$VERSION/Hark-$VERSION.dmg" sparkle:edSignature="$ED_SIGNATURE" length="$(stat -f %z "$DMG")" type="application/octet-stream"/>
+    </item>
+  </channel>
+</rss>
+XML
 
   echo "==> Cask: Casks/hark.rb"
   CASK="$(dirname "$APP_DIR")/Casks/hark.rb"

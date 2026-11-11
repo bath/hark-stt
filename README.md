@@ -34,7 +34,7 @@ Click into any text field, press F5 (or ⌥Space), talk, and press it again. You
 
 Hark uses Whisper. To use Parakeet (NVIDIA Parakeet TDT 0.6B v2, English only), choose 🎙 → Speech Model → Parakeet. Hark downloads it (464 MB) the first time. It also runs on your Mac, and it is faster.
 
-The 🎙 menu bar icon has the sound packs, the Notch Island switch and Check for Updates.
+The 🎙 menu bar icon has the sound packs, the Notch Island switch and Check for Updates. Hark looks for a new version once a day and tells you in the Notch Island; the update installs in place.
 
 ## Uninstall
 

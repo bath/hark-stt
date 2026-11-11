@@ -28,6 +28,7 @@ mkdir -p "$OUT/Contents/MacOS" "$OUT/Contents/Frameworks" "$OUT/Contents/Resourc
 cp "$BIN/Hark" "$OUT/Contents/MacOS/Hark"
 install_name_tool -add_rpath @executable_path/../Frameworks "$OUT/Contents/MacOS/Hark"
 ditto "$BIN/whisper.framework" "$OUT/Contents/Frameworks/whisper.framework"
+ditto "$BIN/Sparkle.framework" "$OUT/Contents/Frameworks/Sparkle.framework"
 sed "s/__VERSION__/$VERSION/g" "$APP_DIR/Resources/Info.plist" >"$OUT/Contents/Info.plist"
 ditto "$SOUNDS" "$OUT/Contents/Resources/sounds"
 find "$APP_DIR/Resources" -type f ! -name Info.plist ! -name '*.entitlements' -exec cp {} "$OUT/Contents/Resources/" \;
@@ -35,6 +36,6 @@ find "$APP_DIR/Resources" -type f ! -name Info.plist ! -name '*.entitlements' -e
 IDENTITY="${HARK_SIGN_IDENTITY:-$(security find-identity -v -p codesigning 2>/dev/null \
   | sed -n 's/.*"\(Apple Development[^"]*\)".*/\1/p' | head -1)}"
 IDENTITY="${IDENTITY:--}"
-codesign --force --sign "$IDENTITY" "$OUT/Contents/Frameworks/whisper.framework"
+"$APP_DIR/scripts/sign-nested.sh" "$OUT" "$IDENTITY"
 codesign --force --sign "$IDENTITY" "$OUT"
 echo "Built $OUT ($VERSION, signed by ${IDENTITY/#-/ad hoc})"
