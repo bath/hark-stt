@@ -28,6 +28,13 @@
 	<string>14.0</string>
 	<key>LSUIElement</key>
 	<true/>
+	<!-- Sparkle. Hark asks once a day itself (Updater.swift), so Sparkle's schedule is off. -->
+	<key>SUEnableAutomaticChecks</key>
+	<false/>
+	<key>SUFeedURL</key>
+	<string>https://hark.works/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>pvW4dF7G8ZFz45u0IkXUN80ydgqC9b6Y6hDjas/Xv0s=</string>
 	<key>NSHumanReadableCopyright</key>
 	<string>MIT License</string>
 	<key>NSMicrophoneUsageDescription</key>

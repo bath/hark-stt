@@ -36,7 +36,7 @@ final class AppController: NSObject, NSApplicationDelegate {
     private var hotkeysTaken: [String] = []
     private var statusTimer: Timer?
     private var previewTimers: [Timer] = []
-    private(set) var checkingForUpdates = false
+    private(set) lazy var updater = Updater(settings: settings)
     private lazy var welcome = WelcomeCard(settings: settings) { [weak self] start in
         if start { self?.engine.press() }
     }
@@ -51,6 +51,7 @@ final class AppController: NSObject, NSApplicationDelegate {
         microphone = CoreAudioMicrophone(deviceName: settings.microphone)
         engine = DictationEngine(microphone: microphone, transcriber: slot, paster: PasteboardPaster())
         menu = StatusMenu(controller: self)
+        updater.onChange = { [weak self] in self?.menu.update() }
         hotkeys = Hotkeys { [weak self] in self?.press() }
         registerHotkeys()
         listen()
@@ -157,37 +158,6 @@ final class AppController: NSObject, NSApplicationDelegate {
         modelState == .loaded && phase != .recording && phase != .transcribing
     }
 
-    func checkForUpdates() {
-        guard !checkingForUpdates else { return }
-        checkingForUpdates = true
-        Task {
-            defer { checkingForUpdates = false }
-            let alert = NSAlert()
-            do {
-                switch try await Updates.check(current: harkVersion) {
-                case .upToDate:
-                    alert.messageText = "Hark is up to date"
-                    alert.informativeText = "Version \(harkVersion) is the latest."
-                case let .available(release):
-                    alert.messageText = "Hark \(release.version) is available"
-                    alert.informativeText = "You have \(harkVersion). Download the new version, quit Hark, and move the new Hark to Applications. Your settings and the model stay."
-                    alert.addButton(withTitle: "Download")
-                    alert.addButton(withTitle: "Later")
-                    NSApp.activate()
-                    if alert.runModal() == .alertFirstButtonReturn {
-                        NSWorkspace.shared.open(release.diskImage ?? release.page)
-                    }
-                    return
-                }
-            } catch {
-                alert.messageText = "Could not check for updates"
-                alert.informativeText = "GitHub did not answer. Try again later."
-            }
-            NSApp.activate()
-            alert.runModal()
-        }
-    }
-
     /// A fake dictation with speech-like levels, so the island and the
     /// current sound pack can be tried without recording or pasting.
     func preview() {
@@ -280,13 +250,18 @@ final class AppController: NSObject, NSApplicationDelegate {
             case .error: sounds.play(.error)
             case .idle: break
             }
+            // The island tells about an update below "Pasted", once a day at most.
+            let notice = new == .done && Updates.noticeIsDue(settings) ? Updates.notice : nil
             if settings.notchIsland {
-                island.show(new)
+                island.show(new, notice: notice)
+                if notice != nil { settings.updateNoticeAt = Date() }
             } else if case let .error(message) = new {
                 menu.flash(message)
             }
             menu.update()
             writeStatus()
+            // After the dictation, so the check never delays the text.
+            if new == .done { updater.checkIfDue() }
         case let .level(rms):
             if settings.notchIsland { island.level(rms) }
         case .transcript:

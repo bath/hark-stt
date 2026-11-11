@@ -62,6 +62,9 @@ final class StatusMenu: NSObject, NSMenuDelegate {
     func menuNeedsUpdate(_ menu: NSMenu) {
         menu.removeAllItems()
         menu.addItem(disabled("Status: \(statusText)"))
+        if let version = Updates.available(controller.settings) {
+            menu.addItem(action("Update to Hark \(version)…", #selector(checkForUpdates)))
+        }
         menu.addItem(action("Toggle Dictation", #selector(toggle)))
         menu.addItem(.separator())
         menu.addItem(action("Notch Island", #selector(toggleIsland), checked: controller.settings.notchIsland))
@@ -83,9 +86,11 @@ final class StatusMenu: NSObject, NSMenuDelegate {
         menu.addItem(action("Start at Login", #selector(toggleLogin), checked: controller.startsAtLogin))
         menu.addItem(.separator())
         menu.addItem(disabled("Hark \(harkVersion)"))
-        let updates = action(controller.checkingForUpdates ? "Checking for Updates…" : "Check for Updates…", #selector(checkForUpdates))
-        updates.isEnabled = !controller.checkingForUpdates
+        let updates = action("Check for Updates…", #selector(checkForUpdates))
+        updates.isEnabled = controller.updater.canCheck
         menu.addItem(updates)
+        menu.addItem(action("Check for Updates Automatically", #selector(toggleUpdateChecks),
+                            checked: controller.settings.updateChecks))
         menu.addItem(.separator())
         menu.addItem(action("Quit Hark", #selector(quit), key: "q"))
     }
@@ -170,7 +175,8 @@ final class StatusMenu: NSObject, NSMenuDelegate {
     @objc private func showWelcome() { controller.showWelcome() }
     @objc private func showSetup() { controller.showSetup() }
     @objc private func toggleLogin() { controller.setLoginItem(!controller.startsAtLogin) }
-    @objc private func checkForUpdates() { controller.checkForUpdates() }
+    @objc private func checkForUpdates() { controller.updater.install() }
+    @objc private func toggleUpdateChecks() { controller.settings.updateChecks.toggle() }
     @objc private func soundsOff() { controller.settings.soundPack = HarkSettings.soundsOff }
     @objc private func previewSounds() { controller.sounds.preview() }
 

@@ -13,6 +13,10 @@ public struct HarkSettings: @unchecked Sendable {
         case loginItemChosen
         /// A `SpeechModel` name.
         case speechModel
+        /// Hark asks for a new version once a day.
+        case updateChecks
+        /// When Hark asked last, the version it found, and when the island told the user last.
+        case updateCheckedAt, updateAvailable, updateNoticeAt
     }
 
     public static let soundsOff = "off"
@@ -69,6 +73,28 @@ public struct HarkSettings: @unchecked Sendable {
     public var speechModel: SpeechModel {
         get { defaults.string(forKey: Key.speechModel.rawValue).flatMap(SpeechModel.init) ?? .whisper }
         nonmutating set { defaults.set(newValue.rawValue, forKey: Key.speechModel.rawValue) }
+    }
+
+    /// Hark asks for a new version once a day, after a dictation.
+    public var updateChecks: Bool {
+        get { defaults.object(forKey: Key.updateChecks.rawValue) as? Bool ?? true }
+        nonmutating set { defaults.set(newValue, forKey: Key.updateChecks.rawValue) }
+    }
+
+    public var updateCheckedAt: Date? {
+        get { defaults.object(forKey: Key.updateCheckedAt.rawValue) as? Date }
+        nonmutating set { defaults.set(newValue, forKey: Key.updateCheckedAt.rawValue) }
+    }
+
+    /// The version the last check found, or nil when it found none.
+    public var updateAvailable: String? {
+        get { defaults.string(forKey: Key.updateAvailable.rawValue) }
+        nonmutating set { defaults.set(newValue, forKey: Key.updateAvailable.rawValue) }
+    }
+
+    public var updateNoticeAt: Date? {
+        get { defaults.object(forKey: Key.updateNoticeAt.rawValue) as? Date }
+        nonmutating set { defaults.set(newValue, forKey: Key.updateNoticeAt.rawValue) }
     }
 
     /// The welcome card version the user has seen. 0 means none.

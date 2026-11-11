@@ -14,6 +14,8 @@ cask "hark" do
     strategy :github_latest
   end
 
+  # Hark.app updates itself with Sparkle.
+  auto_updates true
   depends_on arch: :arm64
   depends_on macos: :sonoma
 

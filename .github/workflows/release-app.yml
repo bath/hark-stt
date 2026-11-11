@@ -5,7 +5,8 @@
 # major version, set a higher harkVersion in app/Sources/HarkCore/Version.swift
 # and merge it: that version is used as it is. The run commits the version and
 # the cask to main, tags the version commit, builds, signs and notarizes the
-# disk image, publishes the release, and updates bath/homebrew-tap. A run that
+# disk image, publishes the release, writes docs/appcast.xml (the app reads it
+# to update itself), and updates bath/homebrew-tap. A run that
 # fails before it publishes deletes its draft release and its tag.
 #
 # Run it by hand from the Actions tab to release the next patch with no change.
@@ -16,6 +17,7 @@
 #   DEVELOPER_ID_IDENTITY      "Developer ID Application: Name (TEAMID)"
 #   NOTARY_KEY_P8              an App Store Connect API key (.p8 contents)
 #   NOTARY_KEY_ID, NOTARY_ISSUER
+#   SPARKLE_PRIVATE_KEY        the Sparkle EdDSA key that signs the update (`generate_keys -x FILE` exports it)
 #   HOMEBREW_TAP_DEPLOY_KEY    the private half of a deploy key with write access to bath/homebrew-tap
 name: Release Hark.app
 
@@ -109,19 +111,21 @@ jobs:
           NOTARY_KEY_P8: ${{ secrets.NOTARY_KEY_P8 }}
           HARK_NOTARY_KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
           HARK_NOTARY_ISSUER: ${{ secrets.NOTARY_ISSUER }}
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
         run: |
           echo "$NOTARY_KEY_P8" >"$RUNNER_TEMP/notary.p8"
           HARK_NOTARY_KEY="$RUNNER_TEMP/notary.p8" app/scripts/release.sh --upload --no-tap
 
-      # 🎙 → Check for Updates and the install script find a release by its DMG,
-      # so it is published only after the upload.
-      - name: Publish the release, and commit the cask to main
+      # The install script finds a release by its DMG, and the appcast links to
+      # the DMG, so the release is published only after the upload.
+      - name: Publish the release, and commit the cask and the appcast to main
         if: steps.version.outputs.version != ''
         env:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
           gh release edit "v$VERSION" --draft=false --latest
-          git commit -q -m "Cask for Hark.app $VERSION" -- Casks/hark.rb
+          git add docs/appcast.xml
+          git commit -q -m "Cask and appcast for Hark.app $VERSION" -- Casks/hark.rb docs/appcast.xml
           git pull -q --rebase origin main
           git push -q origin HEAD:main
 
