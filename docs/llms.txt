@@ -16,7 +16,7 @@ Install Hark.app with `brew install --cask bath/tap/hark`, or `curl -fsSL https:
 - Human steps macOS requires: Allow the microphone, and turn on Hark under Privacy & Security → Accessibility.
 - Why Hark instead of the dictation built into macOS: private (the voice never leaves the Mac, no account, no telemetry), accurate (Whisper large-v3-turbo, with punctuation and capitals; handles names, technical words and long, fast speech), fast (the model stays loaded; on an M5 Pro, 15 s of speech becomes text in about 0.3 s, and the mic starts about 63 ms after F5).
 - Hark.app is one Swift app with whisper.cpp in the same process. The model (574 MB) downloads on first run with a checksum check. It maps the dictation key (F5) with hidutil, needs no driver or password, and can start at login.
-- Network: audio and text never leave the Mac. The app downloads the model once from Hugging Face. Once a day, after a dictation, the app reads hark.works/appcast.xml to see if a new version exists; 🎙 → Check for Updates Automatically turns this off. An update downloads from GitHub and installs in place.
+- Network: audio and text never leave the Mac. The app downloads the model once from Hugging Face. Once a day, after a dictation, the app reads hark.works/appcast.xml to see if a new version exists; Hark menu → Check for Updates Automatically turns this off. An update downloads from GitHub and installs in place.
 - The mic is off until the hotkey and is released when recording stops.
 - Text arrives after the user stops talking, in one paste. The last transcript stays on the clipboard.
 - Speech Model: Whisper large-v3-turbo is the default. The menu changes it to NVIDIA Parakeet TDT 0.6B v2 (English only, Core ML, 464 MB), which is faster. Both run on the Mac.

@@ -2,13 +2,13 @@
 html, body { margin: 0; background: transparent; -webkit-user-select: none; cursor: default;
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif; -webkit-font-smoothing: antialiased; }
 body { display: flex; justify-content: center; padding-top: 24px; }
-.card { width: 380px; border-radius: 28px; background: #fffdf8; color: #2b1d10; padding: 12px 12px 18px; box-sizing: border-box;
-  box-shadow: 0 0 0 0.5px rgba(80,50,20,.12), 0 30px 60px -20px rgba(90,55,20,.55);
+.card { width: 380px; border-radius: 28px; background: #ffffff; color: #14171c; padding: 12px 12px 18px; box-sizing: border-box;
+  box-shadow: 0 0 0 0.5px rgba(20,23,28,.14), 0 30px 60px -20px rgba(20,23,28,.5);
   animation: cardIn 420ms cubic-bezier(.34,1.3,.64,1) backwards; transition: opacity 180ms ease, transform 180ms ease; }
 .card.out { opacity: 0; transform: scale(.97); }
 @keyframes cardIn { from { opacity: 0; transform: translateY(16px) scale(.95) rotate(-1.2deg); } }
 .scene { position: relative; height: 120px; border-radius: 18px; overflow: hidden;
-  background: radial-gradient(80% 90% at 20% 100%, #ffb36b, transparent 60%), radial-gradient(70% 80% at 90% 0%, #7a5cff, transparent 60%), linear-gradient(160deg, #3b2a6b, #e0735a); }
+  background: #b6c9f1; }
 .mb { position: absolute; inset: 0 0 auto; height: 20px; background: rgba(0,0,0,.15); }
 /* The scene replays the real island: notch-height pill, wings that make Transcribing the widest,
    the app's width spring (stiffness 260, damping 0.62) as linear() curves, fast fade-out, slower fade-in. */
@@ -32,17 +32,24 @@ body { display: flex; justify-content: center; padding-top: 24px; }
 .field { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); width: 250px; height: 34px; border-radius: 9px; box-sizing: border-box;
   background: rgba(255,255,255,.88); color: #1d1d1f; font-size: 13px; display: flex; align-items: center; padding: 0 12px; gap: 1px; }
 .field .txt { animation: islText 6s linear infinite; }
-.field .caret { width: 1.5px; height: 15px; background: #0a84ff; }
+.field .caret { width: 1.5px; height: 15px; background: #2563eb; }
 h3 { margin: 16px 8px 10px; font-size: 18px; font-weight: 700; letter-spacing: -0.015em; }
 ul { list-style: none; margin: 0 8px; padding: 0; display: grid; gap: 8px; }
-li { display: flex; gap: 10px; align-items: center; font-size: 14px; color: #4a3a2a; }
-li .b { width: 22px; height: 22px; border-radius: 7px; flex: none; display: grid; place-items: center; font-size: 12px; font-weight: 600; }
-kbd { font: 600 12px -apple-system, BlinkMacSystemFont, sans-serif; padding: 1px 6px; border-radius: 5px; white-space: nowrap; background: #f1e8da; color: #2b1d10; }
+li { display: flex; gap: 10px; align-items: center; font-size: 14px; color: #5f6165; }
+li .b { width: 22px; height: 22px; border-radius: 7px; flex: none; display: grid; place-items: center; font-size: 12px; font-weight: 600; background: #e9eefc; color: #2563eb; }
+kbd { font: 600 12px -apple-system, BlinkMacSystemFont, sans-serif; padding: 1px 6px; border-radius: 5px; white-space: nowrap; background: #eaeaeb; color: #14171c; }
 .foot { display: flex; align-items: center; gap: 12px; margin: 16px 8px 0; }
-.go { white-space: nowrap; font: 600 14px -apple-system, BlinkMacSystemFont, sans-serif; color: #fff; background: #ff3b30; border: 0; border-radius: 999px; padding: 9px 18px; cursor: pointer; }
+.go { white-space: nowrap; font: 600 14px -apple-system, BlinkMacSystemFont, sans-serif; color: #fff; background: #2563eb; border: 0; border-radius: 999px; padding: 9px 18px; cursor: pointer; }
 .go:active { transform: scale(.97); }
-.close { font: 500 13px -apple-system, BlinkMacSystemFont, sans-serif; color: #9a8670; background: none; border: 0; padding: 6px; cursor: pointer; }
-.hint { margin: 12px 8px 0; font-size: 11.5px; color: #9a8670; }
+.close { font: 500 13px -apple-system, BlinkMacSystemFont, sans-serif; color: #5f6165; background: none; border: 0; padding: 6px; cursor: pointer; }
+.hint { margin: 12px 8px 0; font-size: 11.5px; color: #5f6165; }
+/* Graphite Blue, as in Theme.swift and on the website. */
+@media (prefers-color-scheme: dark) {
+  .card { background: #181b21; color: #e8ebf0; box-shadow: 0 0 0 0.5px rgba(255,255,255,.12), 0 30px 60px -20px rgba(0,0,0,.8); }
+  .scene { background: #2f4270; } li, .close, .hint { color: #a3a9b3; }
+  li .b { background: #232a3d; color: #8fb0ff; } kbd { background: #2a2e36; color: #e8ebf0; }
+  .go { background: #5b8cff; color: #0a0f1f; }
+}
 @keyframes islW { 0% { width: 120px; } 10% { width: 120px; animation-timing-function: var(--spring); } 18% { width: 196px; }
   60% { width: 196px; animation-timing-function: var(--spring-short); } 66% { width: 236px; animation-timing-function: var(--spring); }
   74% { width: 206px; } 86% { width: 206px; animation-timing-function: var(--spring); } 94%, 100% { width: 120px; } }
@@ -70,17 +77,17 @@ kbd { font: 600 12px -apple-system, BlinkMacSystemFont, sans-serif; padding: 1px
   </div>
   <h3>Your notch now listens back.</h3>
   <ul>
-    <li><span class="b" style="background:#ffe3df;color:#d70015">●</span><span><kbd>F5</kbd> to talk, <kbd>F5</kbd> again to stop.</span></li>
-    <li><span class="b" style="background:#e6f0ff;color:#0060df">I</span>Text lands wherever your cursor is.</li>
-    <li><span class="b" style="background:#efe6ff;color:#6b3fd4">⌘</span><span>Your last transcript stays on the clipboard.</span></li>
-    <li><span class="b" style="background:#fff0d9;color:#b25e00">♪</span>A short sound on start, stop and paste.</li>
-    <li><span class="b" style="background:#e3f6e8;color:#1a7f37">✓</span>Everything stays on your Mac.</li>
+    <li><span class="b">●</span><span><kbd>F5</kbd> to talk, <kbd>F5</kbd> again to stop.</span></li>
+    <li><span class="b">I</span>Text lands wherever your cursor is.</li>
+    <li><span class="b">⌘</span><span>Your last transcript stays on the clipboard.</span></li>
+    <li><span class="b">♪</span>A short sound on start, stop and paste.</li>
+    <li><span class="b">✓</span>Everything stays on your Mac.</li>
   </ul>
   <div class="foot">
     <button class="go" type="button" id="go">Start dictating</button>
     <button class="close" type="button" id="close">Close</button>
   </div>
-  <p class="hint">Pick sounds or turn them off in the 🎙 menu.</p>
+  <p class="hint">Pick sounds or turn them off in the Hark menu.</p>
 </div>
 <script>
 function post(message) { try { webkit.messageHandlers.hark.postMessage(message); } catch (e) {} }

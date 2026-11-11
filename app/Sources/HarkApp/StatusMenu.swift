@@ -2,7 +2,7 @@ import AppKit
 import HarkCore
 import HarkMac
 
-/// The 🎙 item in the menu bar.
+/// The Hark item in the menu bar: a small waveform.
 @MainActor
 final class StatusMenu: NSObject, NSMenuDelegate {
     private let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -20,14 +20,14 @@ final class StatusMenu: NSObject, NSMenuDelegate {
     }
 
     func update() {
-        var icon: String
-        switch controller.phase {
-        case .recording: icon = "🔴"
-        case .transcribing: icon = "⏳"
-        default: icon = controller.modelState == .loaded ? "🎙" : "⏳"
+        let state: MenuBarIcon.State = switch controller.phase {
+        case .recording: .recording
+        case .transcribing: .busy
+        default: controller.modelState == .loaded ? .ready : .busy
         }
-        if let flashMessage { icon += " " + flashMessage }
-        item.button?.title = icon
+        item.button?.image = MenuBarIcon.image(state)
+        item.button?.imagePosition = .imageLeading
+        item.button?.title = flashMessage.map { " " + $0 } ?? ""
     }
 
     /// Shows a short message next to the icon, when the Notch Island is off.

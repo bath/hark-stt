@@ -170,9 +170,8 @@ private final class IslandView: NSView {
 
     override var isFlipped: Bool { true }
 
-    static let red = NSColor(srgbRed: 1, green: 0.27, blue: 0.23, alpha: 1)
+    static let red = Theme.islandRed
     static let green = NSColor(srgbRed: 0.19, green: 0.82, blue: 0.35, alpha: 1)
-    static let blue = NSColor(srgbRed: 0.30, green: 0.64, blue: 1, alpha: 1)
     static let font = NSFont.systemFont(ofSize: 12, weight: .semibold)
     static let noticeFont = NSFont.systemFont(ofSize: 11, weight: .medium)
 
@@ -262,7 +261,7 @@ private final class IslandView: NSView {
         let end = notice.firstIndex(of: ".").map { notice.index(after: $0) } ?? notice.endIndex
         let line = NSMutableAttributedString(string: String(notice[..<end]), attributes: [
             .font: NSFont.systemFont(ofSize: 11, weight: .semibold),
-            .foregroundColor: Self.blue.withAlphaComponent(alpha),
+            .foregroundColor: Theme.islandNote.withAlphaComponent(alpha),
         ])
         line.append(NSAttributedString(string: String(notice[end...]), attributes: [
             .font: Self.noticeFont,
