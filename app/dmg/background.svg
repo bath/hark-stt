@@ -5,13 +5,13 @@
   <defs>
     <linearGradient id="paper" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#ffffff"/>
-      <stop offset="1" stop-color="#eef0f6"/>
+      <stop offset="1" stop-color="#eef0f3"/>
     </linearGradient>
     <linearGradient id="arrow" gradientUnits="userSpaceOnUse" x1="262" y1="0" x2="384" y2="0">
-      <stop offset="0" stop-color="#36c6ff"/><stop offset="0.5" stop-color="#7b5cff"/><stop offset="1" stop-color="#ff4f9a"/>
+      <stop offset="0" stop-color="#4c7fef"/><stop offset="0.5" stop-color="#2563eb"/><stop offset="1" stop-color="#1d4db7"/>
     </linearGradient>
     <marker id="head" viewBox="0 0 10 10" refX="3" refY="5" markerWidth="3" markerHeight="3" orient="auto" markerUnits="strokeWidth">
-      <path d="M0.6 0.9 L9.2 5 L0.6 9.1 Q0 5 0.6 0.9 Z" fill="#ff4f9a" stroke="#ff4f9a" stroke-width="0.8" stroke-linejoin="round"/>
+      <path d="M0.6 0.9 L9.2 5 L0.6 9.1 Q0 5 0.6 0.9 Z" fill="#1d4db7" stroke="#1d4db7" stroke-width="0.8" stroke-linejoin="round"/>
     </marker>
   </defs>
   <rect width="640" height="420" fill="url(#paper)"/>
@@ -25,13 +25,13 @@
 
   <rect x="0" y="320" width="640" height="100" fill="#14161c" fill-opacity="0.04"/>
   <g font-family="Helvetica Neue" text-anchor="middle">
-    <circle cx="120" cy="350" r="12" fill="#7b5cff"/>
+    <circle cx="120" cy="350" r="12" fill="#2563eb"/>
     <text x="120" y="354.5" font-size="13" font-weight="700" fill="#ffffff">1</text>
     <text x="120" y="384" font-size="13.5" fill="#2a2e38">Drag Hark into Applications</text>
-    <circle cx="320" cy="350" r="12" fill="#7b5cff"/>
+    <circle cx="320" cy="350" r="12" fill="#2563eb"/>
     <text x="320" y="354.5" font-size="13" font-weight="700" fill="#ffffff">2</text>
     <text x="320" y="384" font-size="13.5" fill="#2a2e38">Open Hark</text>
-    <circle cx="520" cy="350" r="12" fill="#7b5cff"/>
+    <circle cx="520" cy="350" r="12" fill="#2563eb"/>
     <text x="520" y="354.5" font-size="13" font-weight="700" fill="#ffffff">3</text>
     <text x="520" y="384" font-size="13.5" fill="#2a2e38">Press F5 and talk</text>
   </g>

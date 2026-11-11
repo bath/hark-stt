@@ -1,4 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <!-- The 🎙 the app shows in the menu bar, in the visitor's own emoji font. -->
-  <text x="16" y="16" text-anchor="middle" dominant-baseline="central" font-size="28">🎙️</text>
+  <!-- The mark of the app icon: a white waveform on the Graphite Blue accent. -->
+  <rect width="32" height="32" rx="7" fill="#2563eb"/>
+  <g stroke="#ffffff" stroke-width="2.4" stroke-linecap="round"><path d="M7 13.5v5M11.5 10v12M16 6.5v19M20.5 11v10M25 13.5v5"/></g>
 </svg>

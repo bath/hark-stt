@@ -58,8 +58,8 @@ When `ok` is `true`, tell the user:
 
 - Click into any text field, press F5 (or ⌥Space), talk, and press it again. The text is pasted where the cursor is.
 - The first press shows a short welcome card. Pressing F5 again closes it and starts recording.
-- The 🎙 icon in the menu bar has the sound packs, the Notch Island switch and Set Up Hark….
-- 🎙 → Speech Model changes from Whisper to Parakeet (NVIDIA Parakeet TDT 0.6B v2, English only, 464 MB, downloaded the first time). Parakeet is faster. The doctor checks the model the user chose.
+- The Hark icon in the menu bar (a small waveform) has the sound packs, the Notch Island switch and Set Up Hark….
+- Hark menu → Speech Model changes from Whisper to Parakeet (NVIDIA Parakeet TDT 0.6B v2, English only, 464 MB, downloaded the first time). Parakeet is faster. The doctor checks the model the user chose.
 - The last transcript stays on the clipboard, so ⌘V pastes it again.
 
 ### Do not
@@ -70,8 +70,8 @@ When `ok` is `true`, tell the user:
 
 - With Homebrew: `brew upgrade --cask hark`.
 - Without Homebrew: run the install script again. It quits Hark and replaces it.
-- The user can also do it in the app: 🎙 → Check for Updates…. Hark downloads the new version, replaces itself and starts again.
-- Hark asks hark.works for a new version once a day, after a dictation. When there is one, the Notch Island shows "Update available. Open the menu bar icon." below "Pasted", and the 🎙 menu has Update to Hark X.Y.Z… as its first item. 🎙 → Check for Updates Automatically turns this off.
+- The user can also do it in the app: Hark menu → Check for Updates…. Hark downloads the new version, replaces itself and starts again.
+- Hark asks hark.works for a new version once a day, after a dictation. When there is one, the Notch Island shows "Update available. Open the menu bar icon." below "Pasted", and the Hark menu has Update to Hark X.Y.Z… as its first item. Hark menu → Check for Updates Automatically turns this off.
 
 Settings, permissions and the model stay. Run the doctor afterwards.
 
@@ -109,7 +109,7 @@ swift run -c release hark-dictate --file clip.wav   # Whisper time for a 16 kHz 
 swift run -c release hark-dictate --parakeet        # Parakeet, not Whisper; downloads its model (464 MB) when missing
 scripts/build-app.sh                                # builds app/build/Hark.app
 open build/Hark.app --args --preview                # a fake dictation: island and sounds, no mic
-build/Hark.app/Contents/MacOS/Hark --render-island DIR   # each island state as a PNG
+build/Hark.app/Contents/MacOS/Hark --render-island DIR   # each island state, the setup window and the menu bar icons as PNG files
 ```
 
 `build/Hark.app/Contents/MacOS/Hark doctor --json` reads `~/Library/Application Support/Hark/status.json`. The running app writes that file every 5 seconds (phase, model, permissions), because only the app itself can see its permissions. `HARK_SLOW_TESTS=1 swift test --filter RealModelDownloadTests` downloads the real model (574 MB), stops, resumes and checks it.

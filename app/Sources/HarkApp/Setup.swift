@@ -66,7 +66,10 @@ final class SetupWindow {
                 close: { [weak self] in self?.close() }
             )))
             window.title = "Set Up Hark"
-            window.styleMask = [.titled, .closable]
+            window.styleMask = [.titled, .closable, .fullSizeContentView]
+            window.titlebarAppearsTransparent = true
+            window.titleVisibility = .hidden
+            window.backgroundColor = Theme.surfaceNS
             window.isReleasedWhenClosed = false
             window.center()
             // The title bar's close button does not call close(), so stop the poll here too.
@@ -158,9 +161,9 @@ struct SetupView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            Text("Set up Hark").font(.title2.bold())
+            Text("Set up Hark").font(.system(size: 22, weight: .bold)).foregroundStyle(Theme.ink)
             Text("Three steps. Hark continues by itself as each one is done.")
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.mute)
 
             step(done: model.model == .present, title: "\(model.speechModel.title) model") {
                 switch model.model {
@@ -168,13 +171,18 @@ struct SetupView: View {
                     Text("On this Mac.")
                 case let .downloading(progress):
                     VStack(alignment: .leading, spacing: 4) {
-                        ProgressView(value: progress?.fraction ?? 0)
-                        Text(downloadText(progress)).font(.callout).foregroundStyle(.secondary).monospacedDigit()
+                        // A plain bar in the theme's colors.
+                        Capsule().fill(Theme.rule).frame(height: 6).overlay(alignment: .leading) {
+                            GeometryReader { bar in
+                                Capsule().fill(Theme.accent).frame(width: bar.size.width * (progress?.fraction ?? 0))
+                            }
+                        }
+                        Text(downloadText(progress)).font(.callout).monospacedDigit()
                     }
                 case let .failed(message):
                     VStack(alignment: .leading, spacing: 6) {
                         Text("The download stopped: \(message). It goes on from where it stopped.")
-                        Button("Try Again", action: retryDownload)
+                        Button("Try Again", action: retryDownload).buttonStyle(PillButtonStyle())
                     }
                 }
             }
@@ -193,34 +201,40 @@ struct SetupView: View {
                 } else {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Hark pastes the text where your cursor is. macOS lets an app do that only with Accessibility. Turn on Hark in the list.")
-                        Button("Open Accessibility Settings", action: openAccessibility)
+                        Button("Open Accessibility Settings", action: openAccessibility).buttonStyle(PillButtonStyle())
                     }
                 }
             }
 
-            Divider()
-            HStack {
+            Rectangle().fill(Theme.rule).frame(height: 1)
+            HStack(alignment: .center, spacing: 12) {
                 if model.isComplete {
-                    Text("Ready. Click into any text field and press F5 or ⌥Space.").bold()
+                    Text("Ready. Press F5 or ⌥Space in any text field.")
+                        .font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.ink)
                 } else {
-                    Text("Everything stays on your Mac.").foregroundStyle(.secondary)
+                    Text("Everything stays on your Mac.").font(.system(size: 13)).foregroundStyle(Theme.mute)
                 }
                 Spacer()
-                Button(model.isComplete ? "Done" : "Close", action: close).keyboardShortcut(.defaultAction)
+                Button(model.isComplete ? "Done" : "Close", action: close)
+                    .buttonStyle(PillButtonStyle(primary: model.isComplete))
+                    .keyboardShortcut(.defaultAction)
             }
         }
-        .padding(24)
+        .padding(.horizontal, 24)
+        .padding(.bottom, 22)
+        .padding(.top, 34)
         .frame(width: 460)
+        .background(Theme.surface)
     }
 
     private func step(done: Bool, title: String, @ViewBuilder detail: () -> some View) -> some View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: done ? "checkmark.circle.fill" : "circle")
-                .foregroundStyle(done ? .green : .secondary)
+                .foregroundStyle(done ? Theme.ok : Theme.rule)
                 .font(.title3)
             VStack(alignment: .leading, spacing: 4) {
-                Text(title).font(.headline)
-                detail().font(.callout)
+                Text(title).font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.ink)
+                detail().font(.system(size: 13)).foregroundStyle(Theme.mute)
             }
         }
     }
@@ -236,5 +250,40 @@ struct SetupView: View {
             text += left < 60 ? ", less than a minute left" : ", about \(Int((left / 60).rounded(.up))) min left"
         }
         return text
+    }
+}
+
+extension SetupView {
+    /// Draws the setup window (complete, and with steps open) and the menu
+    /// bar icons into PNG files, with the island states of `Hark --render-island DIR`.
+    @MainActor
+    static func render(to directory: URL) throws {
+        let complete = SetupModel()
+        complete.model = .present
+        complete.microphone = .authorized
+        complete.accessibility = true
+        let open = SetupModel()
+        open.model = .downloading(.init(fraction: 0.42))
+        open.microphone = .authorized
+        open.accessibility = false
+        for (name, model) in [("setup-complete", complete), ("setup-open", open)] {
+            let renderer = ImageRenderer(content: SetupView(model: model, openAccessibility: {}, retryDownload: {}, close: {}))
+            renderer.scale = 2
+            guard let image = renderer.nsImage, let tiff = image.tiffRepresentation,
+                  let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]) else { continue }
+            try png.write(to: directory.appending(path: "\(name).png"))
+        }
+        for (name, state) in [("menubar-ready", MenuBarIcon.State.ready), ("menubar-recording", .recording), ("menubar-busy", .busy)] {
+            let icon = MenuBarIcon.image(state)
+            let bitmap = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: 144, pixelsHigh: 128, bitsPerSample: 8, samplesPerPixel: 4,
+                                          hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0)!
+            NSGraphicsContext.saveGraphicsState()
+            NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: bitmap)
+            NSColor(white: 0.85, alpha: 1).setFill()
+            NSRect(x: 0, y: 0, width: 144, height: 128).fill()
+            icon.draw(in: NSRect(x: 0, y: 0, width: 144, height: 128))
+            NSGraphicsContext.restoreGraphicsState()
+            try bitmap.representation(using: .png, properties: [:])?.write(to: directory.appending(path: "\(name).png"))
+        }
     }
 }

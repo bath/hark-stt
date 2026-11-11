@@ -114,7 +114,7 @@ enum CLI {
 }
 
 extension CLI {
-    /// Sets the same choice as the 🎙 menu, and applies it now.
+    /// Sets the same choice as the Hark menu, and applies it now.
     static func f5Key(_ choice: String) -> Int32 {
         guard choice == "on" || choice == "off" else {
             FileHandle.standardError.write(Data("usage: Hark f5-key on|off\n".utf8))
