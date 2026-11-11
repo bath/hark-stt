@@ -34,7 +34,7 @@
 	<key>SUFeedURL</key>
 	<string>https://hark.works/appcast.xml</string>
 	<key>SUPublicEDKey</key>
-	<string>__SPARKLE_PUBLIC_KEY__</string>
+	<string>pvW4dF7G8ZFz45u0IkXUN80ydgqC9b6Y6hDjas/Xv0s=</string>
 	<key>NSHumanReadableCopyright</key>
 	<string>MIT License</string>
 	<key>NSMicrophoneUsageDescription</key>
