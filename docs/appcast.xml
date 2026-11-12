@@ -4,12 +4,12 @@
     <title>Hark</title>
     <link>https://hark.works/appcast.xml</link>
     <item>
-      <title>Hark 2.1.0</title>
-      <link>https://github.com/bath/hark-stt/releases/tag/v2.1.0</link>
-      <sparkle:version>2.1.0</sparkle:version>
-      <sparkle:shortVersionString>2.1.0</sparkle:shortVersionString>
+      <title>Hark 2.1.1</title>
+      <link>https://github.com/bath/hark-stt/releases/tag/v2.1.1</link>
+      <sparkle:version>2.1.1</sparkle:version>
+      <sparkle:shortVersionString>2.1.1</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-      <enclosure url="https://github.com/bath/hark-stt/releases/download/v2.1.0/Hark-2.1.0.dmg" sparkle:edSignature="gzNZsAPog8uGkmPQCvIDiFoW27z3OdVkJ4Dz5bS6QYNZxjUCA0i6xB3fVtGhAH0O7U03ex7vwIkbLAym+sdJBQ==" length="19739782" type="application/octet-stream"/>
+      <enclosure url="https://github.com/bath/hark-stt/releases/download/v2.1.1/Hark-2.1.1.dmg" sparkle:edSignature="SdHHpY+TBS728xXdGHXe8WrxESosbzrwpHzIQPDTcUdc1EBCMuOps8kPw92+mFiEG7GkwvuJ6OmTkFRgWvqRAw==" length="19725482" type="application/octet-stream"/>
     </item>
   </channel>
 </rss>
